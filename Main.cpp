@@ -16,6 +16,12 @@ static bool get_IsIAP_Hook(void *thiz) {
     return true;
 }
 
+BNM::Coroutine::IEnumerator TestCoroutine() {
+    co_yield BNM::Coroutine::WaitForSeconds(1.0f);
+    co_yield BNM::Coroutine::WaitForEndOfFrame();
+    co_yield BNM::Coroutine::WaitUntil([]() { return true; });
+}
+
 void *MainThread(void *) {
     bool load = false;
     for (int i = 0; i < 10; i++) {
@@ -46,6 +52,26 @@ void *MainThread(void *) {
             LOGI("get_IsIAP hooked: %s", hooked ? "true" : "false");
         } else {
             LOGI("get_IsIAP not found");
+        }
+
+        LOGI("Testing coroutine");
+        auto coro = TestCoroutine();
+        auto unityCoro = coro.Get();
+        if (unityCoro) {
+            LOGI("coroutine Get ok");
+            bool m1 = unityCoro->MoveNext();
+            auto cur1 = unityCoro->Current();
+            LOGI("MoveNext 1: %s, current: %p", m1 ? "true" : "false", (void *) cur1);
+            bool m2 = unityCoro->MoveNext();
+            LOGI("MoveNext 2: %s", m2 ? "true" : "false");
+            bool m3 = unityCoro->MoveNext();
+            LOGI("MoveNext 3: %s", m3 ? "true" : "false");
+            bool m4 = unityCoro->MoveNext();
+            LOGI("MoveNext 4 (should be false): %s", m4 ? "true" : "false");
+            unityCoro->Finalize();
+            LOGI("coroutine test done");
+        } else {
+            LOGI("coroutine Get failed");
         }
     }
     return nullptr;
