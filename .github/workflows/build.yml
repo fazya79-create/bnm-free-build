@@ -41,5 +41,5 @@ jobs:
       - name: Upload lib
         uses: actions/upload-artifact@v4
         with:
-          name: libbnm-free-${{ matrix.abi }}
-          path: build/libbnm-free.a
+          name: libDemo-${{ matrix.abi }}
+          path: build/libDemo.so
