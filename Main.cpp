@@ -73,17 +73,42 @@ void *MainThread(void *) {
         LOGI("Test B static: IsTokenType not found");
     }
 
-    auto toString = currencyClass.GetMethod("ToString", 0).cast<BNM::Method<BNM::Structures::Mono::String *>>();
-    if (toString) {
+    auto getIapId = currencyClass.GetMethod("GetPlatformIAPID", 0).cast<BNM::Method<BNM::Structures::Mono::String *>>();
+    if (getIapId) {
         try {
-            toString.SetInstance(inst);
-            auto str = toString();
-            LOGI("Test B instance: ToString() = %s", str ? str->str().c_str() : "(null)");
+            getIapId.SetInstance(inst);
+            auto s = getIapId();
+            LOGI("Test B instance: GetPlatformIAPID() = %s", s ? s->str().c_str() : "(null)");
         } catch (...) {
-            LOGI("Test B instance: ToString threw");
+            LOGI("Test B instance: GetPlatformIAPID threw");
         }
     } else {
-        LOGI("Test B instance: ToString not found");
+        LOGI("Test B instance: GetPlatformIAPID not found");
+    }
+
+    auto getHash = currencyClass.GetMethod("GetHashCode", 0).cast<BNM::Method<int>>();
+    if (getHash) {
+        try {
+            getHash.SetInstance(inst);
+            LOGI("Test B instance: GetHashCode() = %d", getHash());
+        } catch (...) {
+            LOGI("Test B instance: GetHashCode threw");
+        }
+    } else {
+        LOGI("Test B instance: GetHashCode not found");
+    }
+
+    auto inst2 = currencyClass.CreateNewInstance();
+    auto equals = currencyClass.GetMethod("Equals", 1).cast<BNM::Method<bool>>();
+    if (equals) {
+        try {
+            equals.SetInstance(inst);
+            LOGI("Test B instance+arg: Equals(inst2) = %s", equals(inst2) ? "true" : "false");
+        } catch (...) {
+            LOGI("Test B instance+arg: Equals threw");
+        }
+    } else {
+        LOGI("Test B instance+arg: Equals not found");
     }
 
     LOGI("ALL TESTS DONE");
