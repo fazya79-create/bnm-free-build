@@ -81,6 +81,16 @@ struct Method : public MethodBase {
 
     template<typename ...Parameters>
     inline Ret operator()(Parameters ...parameters) const { return Call(parameters...); }
+    template<typename ...Parameters>
+    inline IL2CPP::Il2CppObject *CreateNewObjectTypes(const std::initializer_list<std::string_view> &parameterNames, Parameters ...parameters) const {
+        if (!_data) return nullptr;
+        Class(_data->klass).TryInit();
+        auto method = Class(_data->klass).GetMethod(".ctor", parameterNames);
+        auto instance = Class(_data->klass).CreateNewInstance();
+        if (!instance) return nullptr;
+        method.cast<Method<void>>()[instance](parameters...);
+        return instance;
+    }
 
     inline Ret Invoke() const {
         if (!_data) return PRIVATE_INTERNAL::ReturnEmpty<Ret>();

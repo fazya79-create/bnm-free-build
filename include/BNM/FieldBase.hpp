@@ -19,6 +19,7 @@ struct FieldBase {
     inline bool IsValid() const { return _data != nullptr; }
     inline operator bool() const { return IsValid(); }
     void *GetFieldPointer() const;
+    inline BNM_PTR GetOffset() const { return _data ? (BNM_PTR) _data->offset - (_isInStruct && !_isStatic && !_isThreadStatic ? sizeof(IL2CPP::Il2CppObject) : 0x0) : 0; }
     BNM::Class GetType() const;
     BNM::Class GetParentClass() const;
     inline std::string str() const {

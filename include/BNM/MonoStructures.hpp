@@ -41,6 +41,13 @@ struct Array {
     inline T *At(IL2CPP::il2cpp_array_size_t index) { return (T *) ((char *) this + sizeof(IL2CPP::Il2CppArray) + sizeof(T) * index); }
     inline T &operator[](IL2CPP::il2cpp_array_size_t index) { return *(T *) ((char *) this + sizeof(IL2CPP::Il2CppArray) + sizeof(T) * index); }
     inline IL2CPP::il2cpp_array_size_t Size() const { return max_length; }
+    inline IL2CPP::il2cpp_array_size_t GetCapacity() const { return max_length; }
+    inline T *GetData() { return GetItems(); }
+    inline std::vector<T> ToVector() const {
+        std::vector<T> ret;
+        for (IL2CPP::il2cpp_array_size_t i = 0; i < max_length; ++i) ret.push_back((*const_cast<Array<T> *>(this))[i]);
+        return ret;
+    }
     inline void Destroy() { Internal::api.il2cpp_free(this); }
     inline T *GetItems() { return (T *) ((char *) this + sizeof(IL2CPP::Il2CppArray)); }
     static Array<T> *Create(IL2CPP::il2cpp_array_size_t size, bool zeroed = false);
@@ -54,6 +61,24 @@ struct Array {
     inline void CopyFrom(T *source, IL2CPP::il2cpp_array_size_t count) {
         for (IL2CPP::il2cpp_array_size_t i = 0; i < count; ++i) (*this)[i] = source[i];
     }
+};
+
+namespace PRIVATE_MonoListData {
+    void *CompareExchange4List(void *syncRoot);
+}
+
+template<typename T>
+struct DataIterator {
+    T *value{};
+    inline constexpr DataIterator() = default;
+    inline constexpr DataIterator(const T *value) : value((T *) value) {}
+    inline T &operator*() const { return *value; }
+    inline T *operator->() const { return value; }
+    inline operator T &() const { return *value; }
+    inline DataIterator &operator++() { ++value; return *this; }
+    inline DataIterator operator++(int) { auto tmp = *this; ++value; return tmp; }
+    inline bool operator==(const DataIterator &other) const { return value == other.value; }
+    inline bool operator!=(const DataIterator &other) const { return value != other.value; }
 };
 
 template<typename T>
@@ -70,7 +95,13 @@ struct List {
     inline T *GetItems() { return _items ? _items->GetItems() : nullptr; }
     inline int32_t Count() const { return _size; }
     inline int32_t GetSize() const { return _size; }
+    inline int32_t GetVersion() const { return _version; }
     inline bool GetFalse() const { return false; }
+    inline std::vector<T> ToVector() const {
+        std::vector<T> ret;
+        for (int32_t i = 0; i < _size; ++i) ret.push_back((*const_cast<List<T> *>(this))[i]);
+        return ret;
+    }
 
     inline void Resize(int32_t newSize) {
         if (newSize < 1) newSize = 1;
@@ -153,8 +184,10 @@ struct List {
         memcpy(_items->GetItems(), arr->GetItems() + arrIndex, _size * sizeof(T));
     }
 
-    inline void *GetSyncRoot() { return _syncRoot ? _syncRoot : (_syncRoot = (IL2CPP::Il2CppObject *) this); }
+    inline void *GetSyncRoot() { if (!_syncRoot) _syncRoot = (IL2CPP::Il2CppObject *) PRIVATE_MonoListData::CompareExchange4List(_syncRoot); return _syncRoot; }
     inline void *GetEnumerator() { return this; }
+    inline DataIterator<T> begin() { return DataIterator<T>(GetItems()); }
+    inline DataIterator<T> end() { return DataIterator<T>(_items ? GetItems() + _size : nullptr); }
 };
 
 namespace PRIVATE_MonoListData {
@@ -176,6 +209,7 @@ namespace PRIVATE_MonoListData {
     }
 
     IL2CPP::Il2CppClass *TryGetMonoListClass(uint32_t typeHash, MethodData *data, size_t count);
+    void *CompareExchange4List(void *syncRoot);
 
     template<typename T>
     void InitMonoListVTable(List<T> *list) {

@@ -3,6 +3,7 @@
 #include "Debug.hpp"
 #include "Il2CppStructures.hpp"
 #include "Internals.hpp"
+#include "MonoStructures.hpp"
 namespace BNM {
 Structures::Mono::String *CreateMonoString(const std::string_view &str);
 void *GetExternMethod(const std::string_view &str);
@@ -72,6 +73,19 @@ struct Class {
     inline operator CompileTimeClass() const;
 
     IL2CPP::Il2CppObject *CreateNewInstance() const;
+    template<typename T>
+    Structures::Mono::List<T> *NewListBNM() const {
+        if (!_data) return nullptr;
+        TryInit();
+        auto *lst = (Structures::Mono::List<T> *) NewListInstance();
+        if (!lst) return nullptr;
+        lst->_items = NewArray<T>(1);
+        lst->_size = 0;
+        Structures::Mono::PRIVATE_MonoListData::InitMonoListVTable(lst);
+        return lst;
+    }
+    template<typename T>
+    Structures::Mono::List<T> *NewList() const { return NewListBNM<T>(); }
     template<typename ...Args>
     inline IL2CPP::Il2CppObject *CreateNewObjectParameters(Args &&...args) const;
 

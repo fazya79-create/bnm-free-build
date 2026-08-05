@@ -4,6 +4,7 @@
 namespace BNM {
 struct Image {
     IL2CPP::Il2CppImage *_data{};
+    inline size_t GetClassesCount() const { return _data ? _data->typeCount : -1; }
 
     inline constexpr Image() = default;
     inline Image(const Image &) = default;

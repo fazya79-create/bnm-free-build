@@ -354,6 +354,49 @@ namespace Utils {
     bool CheckForNull(T obj) { return (void *) obj; }
 
     template<typename T>
+    struct ForwardList {
+        struct Element {
+            Element *next{};
+            T value{};
+        };
+        Element *lastElement{};
+        inline ForwardList() = default;
+        inline ~ForwardList() { Clear(); }
+        inline ForwardList(const ForwardList &other) : lastElement(nullptr) {
+            if (other.IsEmpty()) return;
+            auto currentOther = other.lastElement->next;
+            do { Add(currentOther->value); currentOther = currentOther->next; } while (currentOther != other.lastElement->next);
+        }
+        inline ForwardList &operator=(const ForwardList &other) {
+            if (this == &other) return *this;
+            Clear();
+            if (other.IsEmpty()) return *this;
+            auto currentOther = other.lastElement->next;
+            do { Add(currentOther->value); currentOther = currentOther->next; } while (currentOther != other.lastElement->next);
+            return *this;
+        }
+        inline bool IsEmpty() const { return lastElement == nullptr; }
+        inline void Clear() {
+            if (!lastElement) return;
+            auto current = lastElement->next;
+            while (current != lastElement) {
+                auto next = current->next;
+                delete current;
+                current = next;
+            }
+            delete lastElement;
+            lastElement = nullptr;
+        }
+        inline void Add(const T &value) {
+            auto element = new Element{nullptr, value};
+            if (!lastElement) { element->next = element; lastElement = element; return; }
+            element->next = lastElement->next;
+            lastElement->next = element;
+            lastElement = element;
+        }
+    };
+
+    template<typename T>
     inline bool IsAllocated(T x) {
         if (!x) return false;
         volatile char c = *(volatile char *) x;

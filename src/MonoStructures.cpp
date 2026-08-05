@@ -9,6 +9,15 @@ Structures::Mono::String *BNM::CreateMonoString(const std::string_view &str) {
 namespace BNM::Structures::Mono::PRIVATE_MonoListData {
     static std::map<uint32_t, IL2CPP::Il2CppClass *> customListsMap{};
 
+    void *CompareExchange4List(void *syncRoot) {
+        if (Internal::vmData.Interlocked$$CompareExchange.IsValid()) {
+            auto m = Internal::vmData.Interlocked$$CompareExchange.cast<Method<void *>>();
+            m.SetInstance(nullptr);
+            m((void **) &syncRoot, (void *) Internal::vmData.Object.CreateNewInstance(), (void *) nullptr);
+        }
+        return syncRoot;
+    }
+
     IL2CPP::Il2CppClass *TryGetMonoListClass(uint32_t typeHash, MethodData *data, size_t count) {
         auto &klass = customListsMap[typeHash];
         if (klass) return klass;

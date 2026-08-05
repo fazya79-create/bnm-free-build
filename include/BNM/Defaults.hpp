@@ -6,6 +6,11 @@ namespace Exceptions {
     struct Exception {
         IL2CPP::Il2CppException *exception{};
         inline operator bool() const { return exception != nullptr; }
+        [[nodiscard]] inline std::string ClassName() const { return exception && exception->className ? ((Structures::Mono::String *) exception->className)->str() : std::string{}; }
+        [[nodiscard]] inline std::string Message() const { return exception && exception->message ? ((Structures::Mono::String *) exception->message)->str() : std::string{}; }
+        [[nodiscard]] inline IL2CPP::Il2CppObject *Data() const { return exception ? exception->_data : nullptr; }
+        [[nodiscard]] inline IL2CPP::Il2CppException *GetException() const { return exception; }
+        [[nodiscard]] inline bool IsValid() const { return exception != nullptr; }
     };
     Exception TryInvoke(const std::function<void()> &func);
 }
@@ -19,6 +24,7 @@ namespace Internal {
 }
 
 struct DefaultTypeRef {
+    [[nodiscard]] inline bool IsValid() const { return _reference && *_reference; }
     BNM::Class *_reference{};
     inline constexpr DefaultTypeRef() = default;
     inline constexpr DefaultTypeRef(BNM::Class *reference) : _reference(reference) {}
@@ -30,6 +36,15 @@ struct DefaultTypeRef {
 using byte = uint8_t;
 using sbyte = int8_t;
 using ushort = uint16_t;
+
+template<typename T>
+inline DefaultTypeRef Get();
+
+template<typename T>
+inline IL2CPP::Il2CppObject *Box(T value) {
+    if constexpr (std::is_pointer_v<T>) return (IL2CPP::Il2CppObject *) value;
+    return BNM::Defaults::Get<T>().ToClass().BoxObject(value);
+}
 
 template<typename T>
 inline DefaultTypeRef Get() {
