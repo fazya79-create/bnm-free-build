@@ -2696,28 +2696,42 @@ void BNM::Internal::LoadCoroutine() {
 }
 
 void BNM::Coroutine::IEnumerator::Finalize() {
-    if (_coroutine) {
-        _coroutine.destroy();
-        _coroutine = nullptr;
+    try {
+        if (_coroutine) {
+            _coroutine.destroy();
+            _coroutine = nullptr;
+        }
+        this->~IEnumerator();
+    } catch (...) {
+        BNM_LOG_ERR("IEnumerator::Finalize exception: %s", Internal::GetExceptionTypeName());
     }
-    this->~IEnumerator();
 }
 
 bool BNM::Coroutine::IEnumerator::MoveNext() {
-    if (!_coroutine) return false;
-    _coroutine.resume();
-    if (_coroutine.done()) return false;
-    _current = _coroutine.promise().value()._object;
-    return true;
+    try {
+        if (!_coroutine) return false;
+        _coroutine.resume();
+        if (_coroutine.done()) return false;
+        _current = _coroutine.promise().value()._object;
+        return true;
+    } catch (...) {
+        BNM_LOG_ERR("IEnumerator::MoveNext exception: %s", Internal::GetExceptionTypeName());
+        return false;
+    }
 }
 
 BNM::Coroutine::IEnumerator *BNM::Coroutine::IEnumerator::Get() {
-    auto inst = (BNM::Coroutine::IEnumerator *) BNM::Class(Internal::coroutineIEClass.myClass).CreateNewInstance();
-    if (!inst) return nullptr;
-    inst->_current = nullptr;
-    inst->_coroutine = nullptr;
-    std::swap(this->_coroutine, inst->_coroutine);
-    return inst;
+    try {
+        auto inst = (BNM::Coroutine::IEnumerator *) BNM::Class(Internal::coroutineIEClass.myClass).CreateNewInstance();
+        if (!inst) return nullptr;
+        inst->_current = nullptr;
+        inst->_coroutine = nullptr;
+        std::swap(this->_coroutine, inst->_coroutine);
+        return inst;
+    } catch (...) {
+        BNM_LOG_ERR("IEnumerator::Get exception: %s", Internal::GetExceptionTypeName());
+        return nullptr;
+    }
 }
 
 void BNM::Coroutine::IEnumerator::Reset() {}
