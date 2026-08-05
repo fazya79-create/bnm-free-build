@@ -22,13 +22,13 @@ namespace PRIVATE_INTERNAL {
     inline IL2CPP::Il2CppClass *&GetMethodClass(IL2CPP::MethodInfo *method) { return method->klass; }
 }
 
-void ResolveApi();
 void EmptyMethod();
 void *OffsetInLib(void *offsetInMemory);
 bool CheckHandle(void *handle);
-IL2CPP::Il2CppClass *TryGetClassWithoutImage(const std::string_view &_namespace, const std::string_view &_name);
 
 namespace Internal {
+void ResolveApi();
+IL2CPP::Il2CppClass *TryGetClassWithoutImage(const std::string_view &_namespace, const std::string_view &_name);
 namespace AssemblerUtils {
     BNM_PTR FindNextJump(BNM_PTR start, uint8_t index);
     void *FindJump(void *start, uint8_t count);

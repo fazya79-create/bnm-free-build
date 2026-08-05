@@ -17,7 +17,7 @@ Class::Class(const MonoType *type) {
     _data = Internal::api.il2cpp_class_from_il2cpp_type((IL2CPP::Il2CppType *) type->type);
 }
 
-static IL2CPP::Il2CppClass *TryGetClassWithoutImage(const std::string_view &_namespace, const std::string_view &_name) {
+static IL2CPP::Il2CppClass *Internal::TryGetClassWithoutImage(const std::string_view &_namespace, const std::string_view &_name) {
     auto &assemblies = Internal::GetAllAssemblies();
 
     for (auto assembly : assemblies) {
@@ -30,7 +30,7 @@ static IL2CPP::Il2CppClass *TryGetClassWithoutImage(const std::string_view &_nam
 }
 
 Class::Class(const std::string_view &_namespace, const std::string_view &_name) {
-    if (_data = TryGetClassWithoutImage(_namespace, _name); _data) return;
+    if (_data = Internal::TryGetClassWithoutImage(_namespace, _name); _data) return;
     BNM_LOG_WARN("Class not found: %s.%s", _namespace.data(), _name.data());
 }
 
@@ -373,7 +373,7 @@ Class CompileTimeClass::ToClass() {
                 auto classInfo = (_ClassInfo *) info;
                 auto _namespace = classInfo->_namespace ? classInfo->_namespace : "";
                 if (!classInfo->_imageName || !strlen(classInfo->_imageName)) {
-                    _loadedClass = TryGetClassWithoutImage(_namespace, classInfo->_name);
+                    _loadedClass = Internal::TryGetClassWithoutImage(_namespace, classInfo->_name);
                     break;
                 }
                 BNM::Image image{};

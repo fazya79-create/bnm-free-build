@@ -98,7 +98,7 @@ const char *Internal::GetExceptionTypeName() {
 void Internal::SetupBNM() {
     auto &api = BNM::Internal::api;
 
-    ResolveApi();
+    Internal::ResolveApi();
 
 #if defined(__ARM_ARCH_7A__) || defined(__aarch64__)
     const uint8_t count = 1;
