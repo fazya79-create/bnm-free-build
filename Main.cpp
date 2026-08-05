@@ -48,6 +48,20 @@ void *MainThread(void *) {
         typeField.Set(2);
         LOGI("Test C: CurrencyType = %d", typeField.Get());
     }
+    auto iapIdField = currencyClass.GetField("IAPId").cast<BNM::Field<BNM::Structures::Mono::String *>>();
+    auto adField = currencyClass.GetField("AdPlacement").cast<BNM::Field<BNM::Structures::Mono::String *>>();
+    if (iapIdField) {
+        iapIdField.SetInstance(inst);
+        iapIdField.Set(BNM::CreateMonoString("iap_test"));
+        auto s = iapIdField.Get();
+        LOGI("Test C string: IAPId = %s", s ? s->str().c_str() : "(null)");
+    } else {
+        LOGI("Test C: IAPId field not found");
+    }
+    if (adField) {
+        adField.SetInstance(inst);
+        adField.Set(BNM::CreateMonoString("placement"));
+    }
 
     auto isTokenType = currencyClass.GetMethod("IsTokenType", 1).cast<BNM::Method<bool>>();
     if (isTokenType) {
