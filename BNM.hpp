@@ -479,6 +479,36 @@ typedef struct Il2CppDomain {
     void *agent_info;
 } Il2CppDomain;
 
+typedef struct Il2CppThreadName {
+    IL2CPP::Il2CppChar *chars;
+    int32_t unused;
+    int32_t length;
+} Il2CppThreadName;
+
+typedef struct Il2CppInternalThread {
+    Il2CppObject obj;
+    int lock_thread_id;
+    void *handle;
+    void *native_handle;
+    Il2CppThreadName name;
+    uint32_t state;
+    Il2CppObject *abort_exc;
+    int abort_state_handle;
+    uint64_t tid;
+    intptr_t debugger_thread;
+    void **static_data;
+    void *runtime_thread_info;
+    Il2CppObject *current_appcontext;
+    Il2CppObject *root_domain_thread;
+    Il2CppArray *_serialized_principal;
+    int _serialized_principal_version;
+    void *appdomain_refs;
+    int32_t interruption_requested;
+    void *longlived;
+    uint8_t threadpool_thread;
+    uint8_t thread_interrupt_requested;
+} Il2CppInternalThread;
+
 typedef struct Il2CppThread {
     Il2CppObject obj;
     Il2CppInternalThread *internal_thread;

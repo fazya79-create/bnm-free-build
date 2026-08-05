@@ -625,7 +625,11 @@ int Internal::BNM_il2cpp_init(const char *domain_name) {
 
     Unhook(BNM_il2cpp_init_origin);
 
-    Load();
+    try {
+        Load();
+    } catch (...) {
+        BNM_LOG_ERR("BNM_il2cpp_init Load exception");
+    }
 
     return ret;
 }
@@ -642,14 +646,19 @@ IL2CPP::Il2CppClass *Internal::BNM_Class$$FromIl2CppType(IL2CPP::Il2CppReflectio
         api.il2cpp_thread_current = (decltype(api.il2cpp_thread_current)) GetIl2CppMethod(BNM_OBFUSCATE_TMP("il2cpp_thread_current"));
     }
 
+    auto domain = api.il2cpp_domain_get();
     auto thread = api.il2cpp_thread_current();
 
-    if (!thread || !thread->internal_thread) return klass;
+    if (!domain || !thread || !thread->internal_thread || (void *) domain->default_context != (void *) thread->internal_thread->current_appcontext) return klass;
 
     Unhook(BNM_il2cpp_init_origin);
     Unhook(BNM_Class$$FromIl2CppType_origin);
 
-    Load();
+    try {
+        Load();
+    } catch (...) {
+        BNM_LOG_ERR("BNM_Class$$FromIl2CppType Load exception");
+    }
 
     return klass;
 }
