@@ -11,6 +11,10 @@
 
 JavaVM *jvm;
 
+static int32_t getHashCode_Hook(void *thiz) {
+    return 0xDEAD;
+}
+
 void *MainThread(void *) {
     bool load = false;
     for (int i = 0; i < 10; i++) {
@@ -29,86 +33,60 @@ void *MainThread(void *) {
     LOGI("Currency class: %s", currencyClass.str().c_str());
 
     auto inst = currencyClass.CreateNewInstance();
-    LOGI("Test instance: %p", (void *) inst);
-    if (!inst) return nullptr;
+    auto inst2 = currencyClass.CreateNewInstance();
+    if (!inst || !inst2) return nullptr;
 
     auto valueField = currencyClass.GetField("Value").cast<BNM::Field<int>>();
-    auto typeField = currencyClass.GetField("CurrencyType").cast<BNM::Field<int>>();
     if (valueField) {
         valueField.SetInstance(inst);
         valueField.Set(777);
-        LOGI("Test C write: Value = %d", valueField.Get());
-        valueField.Set(valueField.Get() + 223);
-        LOGI("Test C write2: Value = %d", valueField.Get());
-    } else {
-        LOGI("Test C: Value field not found");
-    }
-    if (typeField) {
-        typeField.SetInstance(inst);
-        typeField.Set(2);
-        LOGI("Test C: CurrencyType = %d", typeField.Get());
-    }
-    auto iapIdField = currencyClass.GetField("IAPId").cast<BNM::Field<BNM::Structures::Mono::String *>>();
-    auto adField = currencyClass.GetField("AdPlacement").cast<BNM::Field<BNM::Structures::Mono::String *>>();
-    if (iapIdField) {
-        iapIdField.SetInstance(inst);
-        iapIdField.Set(BNM::CreateMonoString("iap_test"));
-        auto s = iapIdField.Get();
-        LOGI("Test C string: IAPId = %s", s ? s->str().c_str() : "(null)");
-    } else {
-        LOGI("Test C: IAPId field not found");
-    }
-    if (adField) {
-        adField.SetInstance(inst);
-        adField.Set(BNM::CreateMonoString("placement"));
-    }
-
-    auto isTokenType = currencyClass.GetMethod("IsTokenType", 1).cast<BNM::Method<bool>>();
-    if (isTokenType) {
-        LOGI("Test B static: IsTokenType(0)=%s IsTokenType(1)=%s IsTokenType(2)=%s",
-             isTokenType(0) ? "true" : "false",
-             isTokenType(1) ? "true" : "false",
-             isTokenType(2) ? "true" : "false");
-    } else {
-        LOGI("Test B static: IsTokenType not found");
-    }
-
-    auto getIapId = currencyClass.GetMethod("GetPlatformIAPID", 0).cast<BNM::Method<BNM::Structures::Mono::String *>>();
-    if (getIapId) {
-        try {
-            getIapId.SetInstance(inst);
-            auto s = getIapId();
-            LOGI("Test B instance: GetPlatformIAPID() = %s", s ? s->str().c_str() : "(null)");
-        } catch (...) {
-            LOGI("Test B instance: GetPlatformIAPID threw");
-        }
-    } else {
-        LOGI("Test B instance: GetPlatformIAPID not found");
+        LOGI("Setup: Value = %d", valueField.Get());
     }
 
     auto getHash = currencyClass.GetMethod("GetHashCode", 0).cast<BNM::Method<int>>();
+    auto equals = currencyClass.GetMethod("Equals", 1).cast<BNM::Method<bool>>();
+
     if (getHash) {
         try {
             getHash.SetInstance(inst);
-            LOGI("Test B instance: GetHashCode() = %d", getHash());
+            LOGI("Test E invoke: GetHashCode() = %d", getHash.Invoke());
         } catch (...) {
-            LOGI("Test B instance: GetHashCode threw");
+            LOGI("Test E invoke: threw");
         }
     } else {
-        LOGI("Test B instance: GetHashCode not found");
+        LOGI("Test E invoke: GetHashCode not found");
     }
 
-    auto inst2 = currencyClass.CreateNewInstance();
-    auto equals = currencyClass.GetMethod("Equals", 1).cast<BNM::Method<bool>>();
     if (equals) {
         try {
             equals.SetInstance(inst);
-            LOGI("Test B instance+arg: Equals(inst2) = %s", equals(inst2) ? "true" : "false");
+            LOGI("Test E invoke+arg: Equals(inst2) = %s", equals.Invoke(inst2) ? "true" : "false");
         } catch (...) {
-            LOGI("Test B instance+arg: Equals threw");
+            LOGI("Test E invoke+arg: threw");
         }
     } else {
-        LOGI("Test B instance+arg: Equals not found");
+        LOGI("Test E invoke+arg: Equals not found");
+    }
+
+    auto info = currencyClass.GetMethod("GetHashCode", 0).GetInfo();
+    void *oldMet = nullptr;
+    bool hooked = BNM::VirtualHookImpl(currencyClass, info, (void *) getHashCode_Hook, &oldMet);
+    LOGI("Test F: VirtualHookImpl = %s, oldMet = %p", hooked ? "true" : "false", oldMet);
+    if (hooked && getHash) {
+        try {
+            getHash.SetInstance(inst);
+            LOGI("Test F: GetHashCode() hooked = %d", getHash.Invoke());
+        } catch (...) {
+            LOGI("Test F: hooked invoke threw");
+        }
+        void *restoreOld = nullptr;
+        BNM::VirtualHookImpl(currencyClass, info, oldMet, &restoreOld);
+        try {
+            getHash.SetInstance(inst);
+            LOGI("Test F: GetHashCode() restored = %d", getHash.Invoke());
+        } catch (...) {
+            LOGI("Test F: restored invoke threw");
+        }
     }
 
     LOGI("ALL TESTS DONE");
