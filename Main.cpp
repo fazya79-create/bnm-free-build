@@ -71,14 +71,16 @@ void *MainThread(void *) {
     auto cameraClass = BNM::Class("UnityEngine", "Camera", BNM::Image("UnityEngine.CoreModule.dll"));
     auto getMain = cameraClass.GetMethod("get_main", 0).cast<BNM::Method<BNM::IL2CPP::Il2CppObject *>>();
     BNM::IL2CPP::Il2CppObject *mainCam = nullptr;
-    if (getMain) {
+    for (int i = 0; i < 15 && !mainCam; i++) {
+        if (!getMain) break;
         try {
             mainCam = getMain();
-            LOGI("Test J: Camera.main = %p", (void *) mainCam);
         } catch (...) {
             LOGI("Test J: get_main threw");
         }
+        if (!mainCam) sleep(1);
     }
+    LOGI("Test J: Camera.main = %p", (void *) mainCam);
     if (mainCam) {
         auto mbClass = BNM::Class("UnityEngine", "MonoBehaviour", BNM::Image("UnityEngine.CoreModule.dll"));
         auto startCoro = mbClass.GetMethod("StartCoroutine", 1).cast<BNM::Method<BNM::IL2CPP::Il2CppObject *>>();
