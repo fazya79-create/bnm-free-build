@@ -2595,22 +2595,14 @@ BNM::Class coroutineAsyncOperation{}, coroutineWaitForEndOfFrame{}, coroutineWai
 void BNM::Internal::SetupCoroutine() {
     using namespace BNM::MANAGEMENT_STRUCTURES;
 
-    static CustomMethod ieFinalize{}, ieMoveNext{}, ieReset{}, ieCurrent{};
+    static CustomMethod ieMoveNext{}, ieReset{}, ieCurrent{};
     coroutineIEClass._size = sizeof(BNM::Coroutine::IEnumerator);
     coroutineIEClass._targetType = BNM::CompileTimeClassBuilder("BNM.Coroutine", "IEnumerator").Build();
     coroutineIEClass._baseType = {};
     coroutineIEClass._owner = {};
     coroutineIEClass._interfaces = {BNM::CompileTimeClassBuilder("System.Collections", "IEnumerator", "mscorlib.dll").Build()};
     AddClass(&coroutineIEClass);
-    {
-        constexpr auto p = &BNM::Coroutine::IEnumerator::Finalize;
-        ieFinalize._address = *(void **) &p;
-        ieFinalize._invoker = (void *) &GetMethodInvoker<false, decltype(&BNM::Coroutine::IEnumerator::Finalize)>::Invoke;
-        ieFinalize._name = "Finalize";
-        ieFinalize._returnType = BNM::Defaults::Get<void>();
-        ieFinalize._isStatic = false;
-        coroutineIEClass._methods.push_back(&ieFinalize);
-    }
+
     {
         constexpr auto p = &BNM::Coroutine::IEnumerator::MoveNext;
         ieMoveNext._address = *(void **) &p;
@@ -2639,22 +2631,14 @@ void BNM::Internal::SetupCoroutine() {
         coroutineIEClass._methods.push_back(&ieCurrent);
     }
 
-    static CustomMethod cwFinalize{}, cwMoveNext{}, cwReset{}, cwCurrent{};
+    static CustomMethod cwMoveNext{}, cwReset{}, cwCurrent{};
     coroutineWaitClass._size = sizeof(CustomWait);
     coroutineWaitClass._targetType = BNM::CompileTimeClassBuilder("BNM.Coroutine", "CustomWait").Build();
     coroutineWaitClass._baseType = {};
     coroutineWaitClass._owner = {};
     coroutineWaitClass._interfaces = {BNM::CompileTimeClassBuilder("System.Collections", "IEnumerator", "mscorlib.dll").Build()};
     AddClass(&coroutineWaitClass);
-    {
-        constexpr auto p = &CustomWait::Finalize;
-        cwFinalize._address = *(void **) &p;
-        cwFinalize._invoker = (void *) &GetMethodInvoker<false, decltype(&CustomWait::Finalize)>::Invoke;
-        cwFinalize._name = "Finalize";
-        cwFinalize._returnType = BNM::Defaults::Get<void>();
-        cwFinalize._isStatic = false;
-        coroutineWaitClass._methods.push_back(&cwFinalize);
-    }
+
     {
         constexpr auto p = &CustomWait::MoveNext;
         cwMoveNext._address = *(void **) &p;
@@ -2711,10 +2695,18 @@ bool BNM::Coroutine::IEnumerator::MoveNext() {
     try {
         if (!_coroutine) return false;
         _coroutine.resume();
-        if (_coroutine.done()) return false;
+        if (_coroutine.done()) {
+            _coroutine.destroy();
+            _coroutine = nullptr;
+            return false;
+        }
         _current = _coroutine.promise().value()._object;
         return true;
     } catch (...) {
+        if (_coroutine) {
+            _coroutine.destroy();
+            _coroutine = nullptr;
+        }
         BNM_LOG_ERR("IEnumerator::MoveNext exception: %s", Internal::GetExceptionTypeName());
         return false;
     }
