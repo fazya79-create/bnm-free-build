@@ -965,7 +965,7 @@ struct List {
     int32_t _version;
     IL2CPP::Il2CppObject *_syncRoot;
 
-    inline constexpr List() : IL2CPP::Il2CppObject(), _items(nullptr), _size(0), _version(0), _syncRoot(nullptr) {}
+    inline constexpr List() : obj(), _items(nullptr), _size(0), _version(0), _syncRoot(nullptr) {}
 
     inline T &operator[](int32_t index) { return (*_items)[index]; }
     inline T *GetItems() { return _items ? _items->GetItems() : nullptr; }
