@@ -69,24 +69,29 @@ void *MainThread(void *) {
     }
 
     auto info = currencyClass.GetMethod("GetHashCode", 0).GetInfo();
+    auto klass = currencyClass.GetClass();
     void *oldMet = nullptr;
     bool hooked = BNM::VirtualHookImpl(currencyClass, info, (void *) getHashCode_Hook, &oldMet);
-    LOGI("Test F: VirtualHookImpl = %s, oldMet = %p", hooked ? "true" : "false", oldMet);
+    LOGI("Test F: VirtualHookImpl = %s, slot = %d, oldMet = %p", hooked ? "true" : "false", info->slot, oldMet);
     if (hooked && getHash) {
         try {
             getHash.SetInstance(inst);
-            LOGI("Test F: GetHashCode() hooked = %d", getHash.Invoke());
+            LOGI("Test F: invoke after hook = %d", getHash.Invoke());
         } catch (...) {
             LOGI("Test F: hooked invoke threw");
         }
+        auto hookedVal = ((int32_t (*)(void *)) klass->vtable[info->slot].methodPtr)(inst);
+        LOGI("Test F: via vtable hooked = %d", hookedVal);
         void *restoreOld = nullptr;
         BNM::VirtualHookImpl(currencyClass, info, oldMet, &restoreOld);
         try {
             getHash.SetInstance(inst);
-            LOGI("Test F: GetHashCode() restored = %d", getHash.Invoke());
+            LOGI("Test F: invoke after restore = %d", getHash.Invoke());
         } catch (...) {
             LOGI("Test F: restored invoke threw");
         }
+        auto restoredVal = ((int32_t (*)(void *)) klass->vtable[info->slot].methodPtr)(inst);
+        LOGI("Test F: via vtable restored = %d", restoredVal);
     }
 
     LOGI("ALL TESTS DONE");
