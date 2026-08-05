@@ -11,8 +11,10 @@
 
 JavaVM *jvm;
 
-static int32_t getHashCode_Hook(void *thiz) {
-    return 0xDEAD;
+BNM::Coroutine::IEnumerator UnityDrivenTest() {
+    LOGI("Test J coroutine body: started by Unity");
+    co_yield BNM::Coroutine::WaitForSeconds(1.0f);
+    LOGI("Test J coroutine body: resumed after 1s wait");
 }
 
 void *MainThread(void *) {
@@ -33,65 +35,68 @@ void *MainThread(void *) {
     LOGI("Currency class: %s", currencyClass.str().c_str());
 
     auto inst = currencyClass.CreateNewInstance();
-    auto inst2 = currencyClass.CreateNewInstance();
-    if (!inst || !inst2) return nullptr;
 
-    auto valueField = currencyClass.GetField("Value").cast<BNM::Field<int>>();
-    if (valueField) {
-        valueField.SetInstance(inst);
-        valueField.Set(777);
-        LOGI("Setup: Value = %d", valueField.Get());
-    }
+    auto goClass = BNM::Class("UnityEngine", "GameObject", BNM::Image("UnityEngine.CoreModule.dll"));
+    bool isA1 = BNM::IsA((BNM::IL2CPP::Il2CppObject *) inst, currencyClass);
+    bool isA2 = BNM::IsA((BNM::IL2CPP::Il2CppObject *) inst, goClass);
+    bool isA3 = BNM::IsA((BNM::IL2CPP::Il2CppObject *) inst, (BNM::IL2CPP::Il2CppObject *) inst);
+    bool isA4 = BNM::IsA((BNM::IL2CPP::Il2CppObject *) inst, (BNM::IL2CPP::Il2CppClass *) nullptr);
+    LOGI("Test G IsA: currency=%s gameobject=%s selfobj=%s nullclass=%s", isA1 ? "true" : "false", isA2 ? "true" : "false", isA3 ? "true" : "false", isA4 ? "true" : "false");
 
-    auto getHash = currencyClass.GetMethod("GetHashCode", 0).cast<BNM::Method<int>>();
-    auto equals = currencyClass.GetMethod("Equals", 1).cast<BNM::Method<bool>>();
-
-    if (getHash) {
-        try {
-            getHash.SetInstance(inst);
-            LOGI("Test E invoke: GetHashCode() = %d", getHash.Invoke());
-        } catch (...) {
-            LOGI("Test E invoke: threw");
+    auto intArr = BNM::Structures::Mono::Array<int>::Create(5);
+    if (intArr) {
+        for (int i = 0; i < 5; ++i) (*intArr)[i] = i * 10;
+        LOGI("Test H Array: size=%llu vals=%d,%d,%d,%d,%d", (unsigned long long) intArr->Size(), (*intArr)[0], (*intArr)[1], (*intArr)[2], (*intArr)[3], (*intArr)[4]);
+        auto classArr = currencyClass.NewArray<int>(3);
+        if (classArr) {
+            (*classArr)[0] = 7;
+            (*classArr)[1] = 8;
+            LOGI("Test H Class::NewArray: size=%llu vals=%d,%d", (unsigned long long) classArr->Size(), (*classArr)[0], (*classArr)[1]);
         }
     } else {
-        LOGI("Test E invoke: GetHashCode not found");
+        LOGI("Test H Array: Create failed");
     }
 
-    if (equals) {
+    auto listClass = BNM::Class("System.Collections.Generic", "List`1", BNM::Image("mscorlib.dll")).GetGeneric({BNM::Defaults::Get<int>()});
+    LOGI("Test I List class: %s", listClass.str().c_str());
+    auto listObj = (BNM::Structures::Mono::List<int> *) listClass.CreateNewInstance();
+    if (listObj) {
+        listObj->_items = intArr;
+        listObj->_size = 3;
+        LOGI("Test I List: Count=%d items=%d,%d,%d", listObj->Count(), (*listObj)[0], (*listObj)[1], (*listObj)[2]);
+    } else {
+        LOGI("Test I List: create failed");
+    }
+
+    auto cameraClass = BNM::Class("UnityEngine", "Camera", BNM::Image("UnityEngine.CoreModule.dll"));
+    auto getMain = cameraClass.GetMethod("get_main", 0).cast<BNM::Method<BNM::IL2CPP::Il2CppObject *>>();
+    BNM::IL2CPP::Il2CppObject *mainCam = nullptr;
+    if (getMain) {
         try {
-            equals.SetInstance(inst);
-            LOGI("Test E invoke+arg: Equals(inst2) = %s", equals.Invoke(inst2) ? "true" : "false");
+            mainCam = getMain();
+            LOGI("Test J: Camera.main = %p", (void *) mainCam);
         } catch (...) {
-            LOGI("Test E invoke+arg: threw");
+            LOGI("Test J: get_main threw");
+        }
+    }
+    if (mainCam) {
+        auto mbClass = BNM::Class("UnityEngine", "MonoBehaviour", BNM::Image("UnityEngine.CoreModule.dll"));
+        auto startCoro = mbClass.GetMethod("StartCoroutine", 1).cast<BNM::Method<BNM::IL2CPP::Il2CppObject *>>();
+        if (startCoro) {
+            try {
+                startCoro.SetInstance(mainCam);
+                auto coro = UnityDrivenTest();
+                auto unityCoro = coro.Get();
+                startCoro(unityCoro);
+                LOGI("Test J: StartCoroutine called, waiting for Unity to drive it");
+            } catch (...) {
+                LOGI("Test J: StartCoroutine threw");
+            }
+        } else {
+            LOGI("Test J: StartCoroutine not found");
         }
     } else {
-        LOGI("Test E invoke+arg: Equals not found");
-    }
-
-    auto info = currencyClass.GetMethod("GetHashCode", 0).GetInfo();
-    auto klass = currencyClass.GetClass();
-    void *oldMet = nullptr;
-    bool hooked = BNM::VirtualHookImpl(currencyClass, info, (void *) getHashCode_Hook, &oldMet);
-    LOGI("Test F: VirtualHookImpl = %s, slot = %d, oldMet = %p", hooked ? "true" : "false", info->slot, oldMet);
-    if (hooked && getHash) {
-        try {
-            getHash.SetInstance(inst);
-            LOGI("Test F: invoke after hook = %d", getHash.Invoke());
-        } catch (...) {
-            LOGI("Test F: hooked invoke threw");
-        }
-        auto hookedVal = ((int32_t (*)(void *)) klass->vtable[info->slot].methodPtr)(inst);
-        LOGI("Test F: via vtable hooked = %d", hookedVal);
-        void *restoreOld = nullptr;
-        BNM::VirtualHookImpl(currencyClass, info, oldMet, &restoreOld);
-        try {
-            getHash.SetInstance(inst);
-            LOGI("Test F: invoke after restore = %d", getHash.Invoke());
-        } catch (...) {
-            LOGI("Test F: restored invoke threw");
-        }
-        auto restoredVal = ((int32_t (*)(void *)) klass->vtable[info->slot].methodPtr)(inst);
-        LOGI("Test F: via vtable restored = %d", restoredVal);
+        LOGI("Test J: no camera, skipped");
     }
 
     LOGI("ALL TESTS DONE");
