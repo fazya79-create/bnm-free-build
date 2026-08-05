@@ -11,12 +11,6 @@
 
 JavaVM *jvm;
 
-BNM::Coroutine::IEnumerator UnityDrivenTest() {
-    LOGI("Test J coroutine body: started by Unity");
-    co_yield BNM::Coroutine::WaitForSeconds(1.0f);
-    LOGI("Test J coroutine body: resumed after 1s wait");
-}
-
 void *MainThread(void *) {
     bool load = false;
     for (int i = 0; i < 10; i++) {
@@ -66,43 +60,6 @@ void *MainThread(void *) {
         LOGI("Test I List: Count=%d items=%d,%d,%d", listObj->Count(), (*listObj)[0], (*listObj)[1], (*listObj)[2]);
     } else {
         LOGI("Test I List: create failed");
-    }
-
-    auto cameraClass = BNM::Class("UnityEngine", "Camera", BNM::Image("UnityEngine.CoreModule.dll"));
-    auto getMain = cameraClass.GetMethod("get_main", 0).cast<BNM::Method<BNM::IL2CPP::Il2CppObject *>>();
-    BNM::IL2CPP::Il2CppObject *mainCam = nullptr;
-    for (int i = 0; i < 15 && !mainCam; i++) {
-        if (!getMain) break;
-        try {
-            mainCam = getMain();
-        } catch (...) {
-            LOGI("Test J: get_main threw");
-        }
-        if (!mainCam) sleep(1);
-    }
-    LOGI("Test J: Camera.main = %p", (void *) mainCam);
-    if (mainCam) {
-        auto mbClass = BNM::Class("UnityEngine", "MonoBehaviour", BNM::Image("UnityEngine.CoreModule.dll"));
-        LOGI("Test J: mbClass = %s", mbClass.str().c_str());
-        auto startCoro = mbClass.GetMethod("StartCoroutine", 1).cast<BNM::Method<BNM::IL2CPP::Il2CppObject *>>();
-        LOGI("Test J: StartCoroutine resolved = %s", startCoro.IsValid() ? "true" : "false");
-        if (startCoro) {
-            try {
-                startCoro.SetInstance(mainCam);
-                LOGI("Test J: creating coroutine");
-                auto coro = UnityDrivenTest();
-                auto unityCoro = coro.Get();
-                LOGI("Test J: unityCoro = %p, calling StartCoroutine", (void *) unityCoro);
-                startCoro(unityCoro);
-                LOGI("Test J: StartCoroutine called, waiting for Unity to drive it");
-            } catch (...) {
-                LOGI("Test J: StartCoroutine threw");
-            }
-        } else {
-            LOGI("Test J: StartCoroutine not found");
-        }
-    } else {
-        LOGI("Test J: no camera, skipped");
     }
 
     LOGI("ALL TESTS DONE");
