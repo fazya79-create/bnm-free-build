@@ -782,6 +782,7 @@ struct Il2CppApi {
     BNM_DO_API(IL2CPP::MethodInfo *, il2cpp_image_get_entry_point, (IL2CPP::Il2CppImage *image));
     BNM_DO_API(size_t, il2cpp_image_get_class_count, (IL2CPP::Il2CppImage *image));
     BNM_DO_API(IL2CPP::Il2CppClass *, il2cpp_image_get_class, (IL2CPP::Il2CppImage *image, size_t index));
+    BNM_DO_API(void, il2cpp_image_get_types, (IL2CPP::Il2CppImage *image, bool exportedOnly, std::vector<IL2CPP::Il2CppClass *> *types));
     BNM_DO_API(IL2CPP::Il2CppManagedMemorySnapshot *, il2cpp_capture_memory_snapshot, ());
     BNM_DO_API(void, il2cpp_free_captured_memory_snapshot, (IL2CPP::Il2CppManagedMemorySnapshot *snapshot));
     BNM_DO_API(void, il2cpp_set_find_plugin_callback, (IL2CPP::Il2CppSetFindPlugInCallback method));
@@ -853,6 +854,8 @@ void SetupCoroutine();
 void LoadCoroutine();
 const char *GetExceptionTypeName();
 extern void (*classInitFunc)(IL2CPP::Il2CppClass *);
+void Image$$GetTypes(const IL2CPP::Il2CppImage *image, bool exportedOnly, std::vector<IL2CPP::Il2CppClass *> *target);
+extern void (*orig_Image$$GetTypes)(const IL2CPP::Il2CppImage *image, bool exportedOnly, std::vector<IL2CPP::Il2CppClass *> *target);
 
 }
 
@@ -1204,6 +1207,21 @@ struct Class {
         return result;
     }
 };
+
+template<typename T, typename = std::enable_if<std::is_pointer_v<T>>>
+bool IsA(T object, IL2CPP::Il2CppClass *_class) { return IsA<BNM::IL2CPP::Il2CppObject *>((IL2CPP::Il2CppObject *) object, _class); }
+
+template<>
+bool IsA<IL2CPP::Il2CppObject *>(IL2CPP::Il2CppObject *object, IL2CPP::Il2CppClass *_class);
+
+template<typename T, typename = std::enable_if<std::is_pointer_v<T>>>
+bool IsA(T object, Class _class) { return IsA(object, _class.GetClass()); }
+
+template<typename T, typename = std::enable_if<std::is_pointer_v<T>>>
+bool IsA(T object, IL2CPP::Il2CppObject *_object) { if (!_object) return false; return IsA(object, _object->klass); }
+
+template<typename T, typename = std::enable_if<std::is_pointer_v<T>>>
+bool IsA(T object, MonoType *_type) { return IsA(object, Class(_type)); }
 
 struct MethodBase {
     IL2CPP::MethodInfo *_data{};
@@ -1914,54 +1932,69 @@ struct CustomWait : BNM::IL2CPP::Il2CppObject {
 
 namespace Coroutine {
 
-struct IEnumerator {
-    IL2CPP::Il2CppObject object;
-    void *_coroutine{};
+struct YieldInstruction {
+    inline YieldInstruction(BNM::IL2CPP::Il2CppObject *object) : _object(object) {}
+    BNM::IL2CPP::Il2CppObject *_object{};
+protected:
+    inline YieldInstruction() = default;
+    friend struct IEnumerator;
+};
+
+struct IEnumerator : BNM::IL2CPP::Il2CppObject {
+    struct promise_type {
+        Coroutine::YieldInstruction _currentValue{};
+        inline IEnumerator get_return_object() { return IEnumerator(std::coroutine_handle<promise_type>::from_promise(*this)); }
+        inline std::suspend_always initial_suspend() noexcept { return {}; }
+        inline std::suspend_always final_suspend() noexcept { return {}; }
+        inline void unhandled_exception() {}
+        inline std::suspend_always await_transform() = delete;
+        [[nodiscard]] inline Coroutine::YieldInstruction value() const noexcept { return _currentValue; }
+        inline std::suspend_always yield_value(const Coroutine::YieldInstruction &val) { _currentValue = val; return {}; }
+        inline void return_void() {}
+    };
     IL2CPP::Il2CppObject *_current{};
+    std::coroutine_handle<promise_type> _coroutine{};
 
     void Finalize();
     bool MoveNext();
     void Reset();
     IL2CPP::Il2CppObject *Current();
     IEnumerator *Get();
+    inline IEnumerator *operator()() { return Get(); }
+    inline operator IEnumerator *() { return Get(); }
+    explicit IEnumerator(std::coroutine_handle<promise_type> handle) : BNM::IL2CPP::Il2CppObject(), _coroutine(handle) {}
+    inline constexpr IEnumerator() : BNM::IL2CPP::Il2CppObject() {}
 };
 
-struct AsyncOperation {
-    IL2CPP::Il2CppObject *_object{};
+struct AsyncOperation : YieldInstruction {
     inline AsyncOperation() = default;
     AsyncOperation(intptr_t operation);
 };
 
-struct WaitForEndOfFrame {
-    IL2CPP::Il2CppObject *_object{};
+struct WaitForEndOfFrame : YieldInstruction {
     WaitForEndOfFrame();
 };
 
-struct WaitForFixedUpdate {
-    IL2CPP::Il2CppObject *_object{};
+struct WaitForFixedUpdate : YieldInstruction {
     WaitForFixedUpdate();
 };
 
-struct WaitForSeconds {
-    IL2CPP::Il2CppObject *_object{};
+struct WaitForSeconds : YieldInstruction {
     inline WaitForSeconds() = default;
     WaitForSeconds(float seconds);
 };
 
-struct WaitForSecondsRealtime {
-    IL2CPP::Il2CppObject *_object{};
+struct WaitForSecondsRealtime : YieldInstruction {
     inline WaitForSecondsRealtime() = default;
     WaitForSecondsRealtime(float seconds);
 };
 
-struct WaitUntil {
-    IL2CPP::Il2CppObject *_object{};
+struct WaitUntil : YieldInstruction {
     inline WaitUntil() = default;
     WaitUntil(const std::function<bool()> &function);
 };
 
-struct WaitWhile {
-    IL2CPP::Il2CppObject *_object{};
+struct WaitWhile : YieldInstruction {
     inline WaitWhile() = default;
     WaitWhile(const std::function<bool()> &function);
 };

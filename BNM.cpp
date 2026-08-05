@@ -552,6 +552,12 @@ void Internal::SetupBNM() {
         BNM_LOG_DEBUG("vm::Image::ClassFromName hooked at %p", OffsetInLib(from_name_adr));
     }
 
+    if (api.il2cpp_image_get_types) {
+        auto get_types_adr = FindJump((void *) api.il2cpp_image_get_types, count);
+        ::BasicHook(get_types_adr, (void *) Internal::Image$$GetTypes, Internal::orig_Image$$GetTypes);
+        BNM_LOG_DEBUG("vm::Image::GetTypes hooked at %p", OffsetInLib(get_types_adr));
+    }
+
     auto corlib = api.il2cpp_get_corlib ? api.il2cpp_get_corlib() : nullptr;
     if (!corlib) {
         BNM_LOG_ERR("SetupBNM failed: no corlib");
@@ -1507,6 +1513,13 @@ void *BNM::GetExternMethod(const std::string_view &str) {
     auto ret = Internal::api.il2cpp_resolve_icall(str.data());
     BNM_LOG_WARN_IF(!ret, "GetExternMethod failed: %s", str.data());
     return (void *) ret;
+}
+
+template<>
+bool BNM::IsA<BNM::IL2CPP::Il2CppObject *>(BNM::IL2CPP::Il2CppObject *object, BNM::IL2CPP::Il2CppClass *_class) {
+    if (!object || !_class) return false;
+    for (auto cls = object->klass; cls; cls = cls->parent) if (cls == _class) return true;
+    return false;
 }
 
 bool BNM::IsLoaded() {
@@ -2562,6 +2575,17 @@ IL2CPP::Il2CppClass *Class$$FromName(IL2CPP::Il2CppImage *image, const char *nam
 
 namespace BNM::Internal {
 
+void (*orig_Image$$GetTypes)(const IL2CPP::Il2CppImage *image, bool exportedOnly, std::vector<BNM::IL2CPP::Il2CppClass *> *target){};
+
+void Image$$GetTypes(const IL2CPP::Il2CppImage *image, bool, std::vector<BNM::IL2CPP::Il2CppClass *> *target) {
+    if (!image || !target) return;
+    if (image->nameToClassHashTable != (decltype(image->nameToClassHashTable)) - 0x424e4d && orig_Image$$GetTypes)
+        orig_Image$$GetTypes(image, false, target);
+    auto it = ClassesManagement::bnmClassesMap.find((BNM_PTR) image);
+    if (it == ClassesManagement::bnmClassesMap.end()) return;
+    for (auto cls : it->second) target->push_back(cls);
+}
+
 MANAGEMENT_STRUCTURES::CustomClass coroutineIEClass{};
 MANAGEMENT_STRUCTURES::CustomClass coroutineWaitClass{};
 BNM::Class coroutineAsyncOperation{}, coroutineWaitForEndOfFrame{}, coroutineWaitForFixedUpdate{}, coroutineWaitForSeconds{}, coroutineWaitForSecondsRealtime{};
@@ -2672,15 +2696,15 @@ void BNM::Internal::LoadCoroutine() {
 }
 
 void BNM::Coroutine::IEnumerator::Finalize() {
+    if (_coroutine) _coroutine.destroy();
     this->~IEnumerator();
 }
 
 bool BNM::Coroutine::IEnumerator::MoveNext() {
     if (!_coroutine) return false;
-    auto handle = *(std::coroutine_handle<> *) _coroutine;
-    if (!handle) return false;
-    handle.resume();
-    if (handle.done()) return false;
+    _coroutine.resume();
+    if (_coroutine.done()) return false;
+    _current = _coroutine.promise().value()._object;
     return true;
 }
 
@@ -2688,6 +2712,8 @@ BNM::Coroutine::IEnumerator *BNM::Coroutine::IEnumerator::Get() {
     auto inst = (BNM::Coroutine::IEnumerator *) BNM::Class(Internal::coroutineIEClass.myClass).CreateNewInstance();
     if (!inst) return nullptr;
     inst->_current = nullptr;
+    inst->_coroutine = nullptr;
+    std::swap(this->_coroutine, inst->_coroutine);
     return inst;
 }
 
