@@ -11,6 +11,11 @@
 
 JavaVM *jvm;
 
+static bool get_IsIAP_Hook(void *thiz) {
+    LOGI("get_IsIAP called (hooked), forcing true");
+    return true;
+}
+
 void *MainThread(void *) {
     bool load = false;
     for (int i = 0; i < 10; i++) {
@@ -29,6 +34,19 @@ void *MainThread(void *) {
         LOGI("GameObject class: %s", cls.str().c_str());
         auto methods = cls.GetMethods(true);
         LOGI("GameObject methods: %zu", methods.size());
+
+        auto currency = BNM::Class("SYBO.Subway.Core.CommonData", "Currency", BNM::Image("SYBO.Subway.Core.CommonData.dll"));
+        LOGI("Currency class: %s", currency.str().c_str());
+        auto isIap = currency.GetMethod("get_IsIAP", 0);
+        if (isIap.IsValid()) {
+            auto info = isIap.GetInfo();
+            LOGI("get_IsIAP offset: %p", (void *) isIap.GetOffset());
+            static bool (*orig_get_IsIAP)(void *);
+            bool hooked = DobbyHook((void *) info->methodPointer, (dobby_dummy_func_t) get_IsIAP_Hook, (dobby_dummy_func_t *) &orig_get_IsIAP) == 0;
+            LOGI("get_IsIAP hooked: %s", hooked ? "true" : "false");
+        } else {
+            LOGI("get_IsIAP not found");
+        }
     }
     return nullptr;
 }
