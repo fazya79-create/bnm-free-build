@@ -1521,6 +1521,7 @@ void BNM::Free(void *ptr) {
 
 namespace BNM::Defaults::Internal {
     BNM::Class Void{}, Boolean{}, Byte{}, SByte{}, Int16{}, UInt16{}, Int32{}, UInt32{}, IntPtr{}, UIntPtr{}, Int64{}, UInt64{}, Single{}, Double{}, Decimal{}, String{}, Object{};
+    BNM::Class Type{};
     BNM::Class Vector2{}, Vector3{}, Vector4{}, Color{}, Color32{}, Ray{}, Quaternion{}, Matrix3x3{}, Matrix4x4{}, RaycastHit{}, RaycastHit2D{};
     BNM::Class UnityObject{}, MonoBehaviour{};
 }
