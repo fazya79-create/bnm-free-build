@@ -11,17 +11,6 @@
 
 JavaVM *jvm;
 
-static bool get_IsIAP_Hook(void *thiz) {
-    LOGI("get_IsIAP called (hooked), forcing true");
-    return true;
-}
-
-BNM::Coroutine::IEnumerator TestCoroutine() {
-    co_yield BNM::Coroutine::WaitForSeconds(1.0f);
-    co_yield BNM::Coroutine::WaitForEndOfFrame();
-    co_yield BNM::Coroutine::WaitUntil([]() { return true; });
-}
-
 void *MainThread(void *) {
     bool load = false;
     for (int i = 0; i < 10; i++) {
@@ -34,53 +23,62 @@ void *MainThread(void *) {
     }
     for (int i = 0; i < 20 && !BNM::IsLoaded(); i++) sleep(1);
     LOGI("BNM-Free load result: %s, loaded: %s", load ? "true" : "false", BNM::IsLoaded() ? "true" : "false");
-    if (BNM::IsLoaded()) {
-        LOGI("BNM-Free loaded, testing resolve");
-        auto cls = BNM::Class("UnityEngine", "GameObject", BNM::Image("UnityEngine.CoreModule.dll"));
-        LOGI("GameObject class: %s", cls.str().c_str());
-        auto methods = cls.GetMethods(true);
-        LOGI("GameObject methods: %zu", methods.size());
+    if (!BNM::IsLoaded()) return nullptr;
 
-        auto currency = BNM::Class("SYBO.Subway.Core.CommonData", "Currency", BNM::Image("SYBO.Subway.Core.CommonData.dll"));
-        LOGI("Currency class: %s", currency.str().c_str());
-        auto isIap = currency.GetMethod("get_IsIAP", 0);
-        if (isIap.IsValid()) {
-            auto info = isIap.GetInfo();
-            LOGI("get_IsIAP offset: %p", (void *) isIap.GetOffset());
-            static bool (*orig_get_IsIAP)(void *);
-            bool hooked = DobbyHook((void *) info->methodPointer, (dobby_dummy_func_t) get_IsIAP_Hook, (dobby_dummy_func_t *) &orig_get_IsIAP) == 0;
-            LOGI("get_IsIAP hooked: %s", hooked ? "true" : "false");
-        } else {
-            LOGI("get_IsIAP not found");
-        }
+    auto currencyClass = BNM::Class("SYBO.Subway.Core.CommonData", "Currency", BNM::Image("SYBO.Subway.Core.CommonData.dll"));
+    LOGI("Currency class: %s", currencyClass.str().c_str());
 
-        LOGI("Testing coroutine");
-        auto coro = TestCoroutine();
-        auto unityCoro = coro.Get();
-        if (unityCoro) {
-            LOGI("coroutine Get ok");
-            bool m1 = unityCoro->MoveNext();
-            auto cur1 = unityCoro->Current();
-            LOGI("MoveNext 1: %s, current: %p", m1 ? "true" : "false", (void *) cur1);
-            bool m2 = unityCoro->MoveNext();
-            LOGI("MoveNext 2: %s", m2 ? "true" : "false");
-            bool m3 = unityCoro->MoveNext();
-            LOGI("MoveNext 3: %s", m3 ? "true" : "false");
-            bool m4 = unityCoro->MoveNext();
-            LOGI("MoveNext 4 (should be false): %s", m4 ? "true" : "false");
-            unityCoro->Finalize();
-            LOGI("coroutine test done");
-        } else {
-            LOGI("coroutine Get failed");
-        }
+    auto inst = currencyClass.CreateNewInstance();
+    LOGI("Test instance: %p", (void *) inst);
+    if (!inst) return nullptr;
+
+    auto valueField = currencyClass.GetField("Value").cast<BNM::Field<int>>();
+    auto typeField = currencyClass.GetField("CurrencyType").cast<BNM::Field<int>>();
+    if (valueField) {
+        valueField.SetInstance(inst);
+        valueField.Set(777);
+        LOGI("Test C write: Value = %d", valueField.Get());
+        valueField.Set(valueField.Get() + 223);
+        LOGI("Test C write2: Value = %d", valueField.Get());
+    } else {
+        LOGI("Test C: Value field not found");
     }
+    if (typeField) {
+        typeField.SetInstance(inst);
+        typeField.Set(2);
+        LOGI("Test C: CurrencyType = %d", typeField.Get());
+    }
+
+    auto isTokenType = currencyClass.GetMethod("IsTokenType", 1).cast<BNM::Method<bool>>();
+    if (isTokenType) {
+        LOGI("Test B static: IsTokenType(0)=%s IsTokenType(1)=%s IsTokenType(2)=%s",
+             isTokenType(0) ? "true" : "false",
+             isTokenType(1) ? "true" : "false",
+             isTokenType(2) ? "true" : "false");
+    } else {
+        LOGI("Test B static: IsTokenType not found");
+    }
+
+    auto toString = currencyClass.GetMethod("ToString", 0).cast<BNM::Method<BNM::Structures::Mono::String *>>();
+    if (toString) {
+        try {
+            toString.SetInstance(inst);
+            auto str = toString();
+            LOGI("Test B instance: ToString() = %s", str ? str->str().c_str() : "(null)");
+        } catch (...) {
+            LOGI("Test B instance: ToString threw");
+        }
+    } else {
+        LOGI("Test B instance: ToString not found");
+    }
+
+    LOGI("ALL TESTS DONE");
     return nullptr;
 }
 
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *) {
     jvm = vm;
     pthread_t thread;
     pthread_create(&thread, nullptr, MainThread, nullptr);
-    pthread_detach(thread);
     return JNI_VERSION_1_6;
 }
