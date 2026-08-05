@@ -1509,6 +1509,46 @@ Structures::Mono::String *BNM::CreateMonoString(const std::string_view &str) {
     return (Structures::Mono::String *) Internal::api.il2cpp_string_new(str.data());
 }
 
+namespace BNM::Structures::Mono::PRIVATE_MonoListData {
+    static std::map<uint32_t, IL2CPP::Il2CppClass *> customListsMap{};
+
+    IL2CPP::Il2CppClass *TryGetMonoListClass(uint32_t typeHash, MethodData *data, size_t count) {
+        auto &klass = customListsMap[typeHash];
+        if (klass) return klass;
+
+        auto templateClass = Internal::customListTemplateClass;
+        if (!templateClass) return nullptr;
+        auto size = sizeof(IL2CPP::Il2CppClass) + templateClass->vtable_count * sizeof(IL2CPP::VirtualInvokeData);
+        auto typedClass = (IL2CPP::Il2CppClass *) BNM_malloc(size);
+        memcpy(typedClass, templateClass, size);
+
+        std::map<size_t, IL2CPP::MethodInfo *> createdMethods{};
+        for (uint16_t i = 4; i < typedClass->vtable_count; ++i) {
+            auto &cur = typedClass->vtable[i];
+            if (!cur.method || !cur.method->name) continue;
+            auto name = std::string_view(cur.method->name);
+            auto dot = name.rfind('.');
+            if (dot != std::string_view::npos) name = name.substr(dot + 1);
+
+            auto iterator = data;
+            size_t c = 0;
+            for (; c < count; ++c, ++iterator) if (iterator->name && name == iterator->name) break;
+            if (c == count) continue;
+
+            auto &methodInfo = createdMethods[FNV1a(name)];
+            if (!methodInfo) {
+                methodInfo = (IL2CPP::MethodInfo *) BNM_malloc(sizeof(IL2CPP::MethodInfo));
+                *methodInfo = *cur.method;
+                methodInfo->methodPointer = (IL2CPP::Il2CppMethodPointer) iterator->ptr;
+            }
+            cur.method = methodInfo;
+            cur.methodPtr = methodInfo->methodPointer;
+        }
+        klass = typedClass;
+        return klass;
+    }
+}
+
 void *BNM::GetExternMethod(const std::string_view &str) {
     auto ret = Internal::api.il2cpp_resolve_icall(str.data());
     BNM_LOG_WARN_IF(!ret, "GetExternMethod failed: %s", str.data());

@@ -55,9 +55,17 @@ void *MainThread(void *) {
     LOGI("Test I List class: %s", listClass.str().c_str());
     auto listObj = (BNM::Structures::Mono::List<int> *) listClass.CreateNewInstance();
     if (listObj) {
-        listObj->_items = intArr;
-        listObj->_size = 3;
-        LOGI("Test I List: Count=%d items=%d,%d,%d", listObj->Count(), (*listObj)[0], (*listObj)[1], (*listObj)[2]);
+        BNM::Structures::Mono::PRIVATE_MonoListData::InitMonoListVTable(listObj);
+        listObj->Add(1);
+        listObj->Add(2);
+        listObj->Add(3);
+        LOGI("Test I List: after Add Count=%d items=%d,%d,%d", listObj->GetSize(), listObj->GetItem(0), listObj->GetItem(1), listObj->GetItem(2));
+        listObj->Insert(1, 99);
+        LOGI("Test I List: after Insert(1,99) Count=%d items=%d,%d,%d,%d", listObj->GetSize(), listObj->GetItem(0), listObj->GetItem(1), listObj->GetItem(2), listObj->GetItem(3));
+        listObj->RemoveAt(2);
+        LOGI("Test I List: after RemoveAt(2) Count=%d items=%d,%d,%d", listObj->GetSize(), listObj->GetItem(0), listObj->GetItem(1), listObj->GetItem(2));
+        LOGI("Test I List: Contains(99)=%s IndexOf(99)=%d", listObj->Contains(99) ? "true" : "false", listObj->IndexOf(99));
+        LOGI("Test I List: typed klass = %p", (void *) listObj->obj.klass);
     } else {
         LOGI("Test I List: create failed");
     }
