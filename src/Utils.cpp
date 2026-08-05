@@ -108,14 +108,14 @@ BNM_PTR FindNextJump(BNM_PTR start, uint8_t index) {
 
 using namespace BNM::Internal::AssemblerUtils;
 
-void *FindJump(void *start, uint8_t count) {
+void *BNM::Internal::AssemblerUtils::FindJump(void *start, uint8_t count) {
     if (!start) return nullptr;
     return (void *) FindNextJump((BNM_PTR) start, count);
 }
 
-void EmptyMethod() {}
+void BNM::EmptyMethod() {}
 
-void *OffsetInLib(void *offsetInMemory) {
+void *BNM::OffsetInLib(void *offsetInMemory) {
     if (offsetInMemory == nullptr) return nullptr;
     Dl_info info;
     BNM_dladdr(offsetInMemory, &info);
@@ -126,7 +126,7 @@ void *Utils::OffsetInLib(void *offsetInMemory) {
     return ::OffsetInLib(offsetInMemory);
 }
 
-bool CheckHandle(void *handle) {
+bool BNM::CheckHandle(void *handle) {
     void *init = BNM_dlsym(handle, BNM_OBFUSCATE_TMP("il2cpp_init"));
     if (!init) return false;
 
