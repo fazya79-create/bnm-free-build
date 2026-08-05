@@ -47,12 +47,12 @@ typedef unsigned int BNM_PTR;
 #include <dobby.h>
 template<typename PTR_T, typename NEW_T, typename T_OLD>
 inline void *BasicHook(PTR_T ptr, NEW_T newMethod, T_OLD &oldBytes) {
-    if ((void *) ptr != nullptr) DobbyHook((void *) ptr, (void *) newMethod, (void **) &oldBytes);
+    if ((void *) ptr != nullptr) DobbyHook((void *) ptr, (dobby_dummy_func_t) newMethod, (dobby_dummy_func_t *) &oldBytes);
     return (void *) ptr;
 }
 template<typename PTR_T, typename NEW_T, typename T_OLD>
 inline void *BasicHook(PTR_T ptr, NEW_T newMethod, T_OLD &&oldBytes) {
-    if ((void *) ptr != nullptr) DobbyHook((void *) ptr, (void *) newMethod, (void **) &oldBytes);
+    if ((void *) ptr != nullptr) DobbyHook((void *) ptr, (dobby_dummy_func_t) newMethod, (dobby_dummy_func_t *) &oldBytes);
     return (void *) ptr;
 }
 template<typename PTR_T>
@@ -882,10 +882,19 @@ struct String {
     inline std::string str() const;
     inline unsigned int GetHash() const;
     static String *Empty();
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundefined-bool-conversion"
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnonnull-compare"
+#endif
     inline bool IsNullOrEmpty() const { return !this || !length; }
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#else
 #pragma GCC diagnostic pop
+#endif
     inline operator std::string() const { return str(); }
 };
 
@@ -1247,7 +1256,7 @@ struct Method : public MethodBase {
         if (!_data) return PRIVATE_INTERNAL::ReturnEmpty<Ret>();
         IL2CPP::Il2CppException *exc = nullptr;
         auto ret = Internal::api.il2cpp_runtime_invoke(_data, _instance, nullptr, &exc);
-        if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? exc->message->str().c_str() : "unknown");
+        if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? ((Structures::Mono::String *) exc->message)->str().c_str() : "unknown");
         if constexpr (!std::is_void_v<Ret>) return (Ret) ret;
     }
 
@@ -1257,7 +1266,7 @@ struct Method : public MethodBase {
         void *args[] = {(void *) parameters...};
         IL2CPP::Il2CppException *exc = nullptr;
         auto ret = Internal::api.il2cpp_runtime_invoke(_data, _instance, args, &exc);
-        if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? exc->message->str().c_str() : "unknown");
+        if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? ((Structures::Mono::String *) exc->message)->str().c_str() : "unknown");
         if constexpr (!std::is_void_v<Ret>) return (Ret) ret;
     }
 };
@@ -2022,8 +2031,13 @@ inline Defaults::DefaultTypeRef::operator BNM::CompileTimeClass() const {
     result._loadedClass = _reference ? *_reference : Class{};
     return result;
 }
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundefined-bool-conversion"
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnonnull-compare"
+#endif
 inline std::string Structures::Mono::String::str() const {
     if (!this || !length) return {};
     std::string utf8;
@@ -2042,9 +2056,25 @@ inline std::string Structures::Mono::String::str() const {
     }
     return utf8;
 }
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#else
 #pragma GCC diagnostic pop
+#endif
 inline unsigned int Structures::Mono::String::GetHash() const {
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundefined-bool-conversion"
+#else
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnonnull-compare"
+#endif
     if (!this) return 0;
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#else
+#pragma GCC diagnostic pop
+#endif
     const IL2CPP::Il2CppChar *p = chars;
     unsigned int h = 0;
     for (int32_t i = 0; i < length; ++i) {

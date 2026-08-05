@@ -1892,6 +1892,8 @@ static void ModifyClass(MANAGEMENT_STRUCTURES::CustomClass *customClass, Class t
         for (size_t i = 0; i < newMethodsCount; ++i) {
             auto method = customClass->_methods[i];
 
+            auto paramCount = method->_parameterTypes.size();
+            (void) paramCount;
 
             bool isHooked = false;
             method->myInfo = ProcessCustomMethod(method, target, &isHooked);
