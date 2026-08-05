@@ -351,6 +351,9 @@ namespace PRIVATE_FieldUtils {
 
 namespace Utils {
     template<typename T>
+    bool CheckForNull(T obj) { return (void *) obj; }
+
+    template<typename T>
     inline bool IsAllocated(T x) {
         if (!x) return false;
         volatile char c = *(volatile char *) x;
