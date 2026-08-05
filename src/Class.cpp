@@ -17,7 +17,7 @@ Class::Class(const MonoType *type) {
     _data = Internal::api.il2cpp_class_from_il2cpp_type((IL2CPP::Il2CppType *) type->type);
 }
 
-static IL2CPP::Il2CppClass *Internal::TryGetClassWithoutImage(const std::string_view &_namespace, const std::string_view &_name) {
+IL2CPP::Il2CppClass *BNM::Internal::TryGetClassWithoutImage(const std::string_view &_namespace, const std::string_view &_name) {
     auto &assemblies = Internal::GetAllAssemblies();
 
     for (auto assembly : assemblies) {
