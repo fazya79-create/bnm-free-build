@@ -2696,7 +2696,10 @@ void BNM::Internal::LoadCoroutine() {
 }
 
 void BNM::Coroutine::IEnumerator::Finalize() {
-    if (_coroutine) _coroutine.destroy();
+    if (_coroutine) {
+        _coroutine.destroy();
+        _coroutine = nullptr;
+    }
     this->~IEnumerator();
 }
 

@@ -1924,8 +1924,8 @@ extern bool InvertMatrix4x4_Full(const float *inMatrix, float *dest);
 struct CustomWait : BNM::IL2CPP::Il2CppObject {
     std::function<bool()> _func{};
     bool _isUntil = false;
-    void Finalize() { this->~CustomWait(); }
-    bool MoveNext() const { return _isUntil == !_func(); }
+    void Finalize() { _func = {}; this->~CustomWait(); }
+    bool MoveNext() const { if (!_func) return false; return _isUntil == !_func(); }
     void Reset() {}
     static IL2CPP::Il2CppObject *Current() { return nullptr; }
 };
