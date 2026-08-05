@@ -1307,7 +1307,12 @@ struct Method : public MethodBase {
         IL2CPP::Il2CppException *exc = nullptr;
         auto ret = Internal::api.il2cpp_runtime_invoke(_data, _instance, nullptr, &exc);
         if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? ((Structures::Mono::String *) exc->message)->str().c_str() : "unknown");
-        if constexpr (!std::is_void_v<Ret>) return (Ret) ret;
+        if constexpr (!std::is_void_v<Ret>) {
+            if constexpr (std::is_pointer_v<Ret>) return (Ret) ret;
+            Ret val{};
+            memcpy(&val, &ret, sizeof(Ret));
+            return val;
+        }
     }
 
     template<typename ...Parameters>
@@ -1317,7 +1322,12 @@ struct Method : public MethodBase {
         IL2CPP::Il2CppException *exc = nullptr;
         auto ret = Internal::api.il2cpp_runtime_invoke(_data, _instance, args, &exc);
         if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? ((Structures::Mono::String *) exc->message)->str().c_str() : "unknown");
-        if constexpr (!std::is_void_v<Ret>) return (Ret) ret;
+        if constexpr (!std::is_void_v<Ret>) {
+            if constexpr (std::is_pointer_v<Ret>) return (Ret) ret;
+            Ret val{};
+            memcpy(&val, &ret, sizeof(Ret));
+            return val;
+        }
     }
 };
 

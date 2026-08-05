@@ -1484,14 +1484,14 @@ namespace BNM::PRIVATE_FieldUtils {
     }
 }
 
-bool InvokeHookImpl(IL2CPP::MethodInfo *info, void *newMet, void **oldMet) {
+bool BNM::InvokeHookImpl(IL2CPP::MethodInfo *info, void *newMet, void **oldMet) {
     if (!info) return false;
     if (oldMet) *oldMet = (void *) info->methodPointer;
     info->methodPointer = (IL2CPP::Il2CppMethodPointer) newMet;
     return true;
 }
 
-bool VirtualHookImpl(Class targetClass, IL2CPP::MethodInfo *info, void *newMet, void **oldMet) {
+bool BNM::VirtualHookImpl(Class targetClass, IL2CPP::MethodInfo *info, void *newMet, void **oldMet) {
     if (!info || !targetClass) return false;
 
     auto klass = targetClass._data;
