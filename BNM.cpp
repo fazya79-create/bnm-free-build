@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <cmath>
+#include <cxxabi.h>
 
 using namespace BNM;
 
@@ -9,6 +10,7 @@ namespace BNM::Internal {
 
 Il2CppApi api{};
 States states{};
+void (*classInitFunc)(IL2CPP::Il2CppClass *){};
 void *il2cppLibraryHandle{};
 void *currentFinderData = &il2cppLibraryHandle;
 VMData vmData{};
@@ -508,6 +510,11 @@ void Internal::LateInit(void *il2cpp_class_from_il2cpp_type_addr) {
     BNM_Class$$FromIl2CppType_origin = ::BasicHook(from_il2cpp_type, (void *) BNM_Class$$FromIl2CppType, old_BNM_Class$$FromIl2CppType);
 }
 
+const char *Internal::GetExceptionTypeName() {
+    auto type = abi::__cxa_current_exception_type();
+    return type ? type->name() : "unknown";
+}
+
 void Internal::SetupBNM() {
     auto &api = BNM::Internal::api;
 
@@ -523,6 +530,7 @@ void Internal::SetupBNM() {
         auto arrayNew = (BNM_PTR) api.il2cpp_array_new_specific;
         auto first = FindNextJump(arrayNew, count);
         auto init = FindNextJump(first, count); (void) init;
+        classInitFunc = (void (*)(IL2CPP::Il2CppClass *)) init;
         BNM_LOG_DEBUG("Class::Init resolved at %p", OffsetInLib((void *) init));
     }
 
@@ -628,7 +636,7 @@ int Internal::BNM_il2cpp_init(const char *domain_name) {
     try {
         Load();
     } catch (...) {
-        BNM_LOG_ERR("BNM_il2cpp_init Load exception");
+        BNM_LOG_ERR("BNM_il2cpp_init Load exception: %s", Internal::GetExceptionTypeName());
     }
 
     return ret;
@@ -657,7 +665,7 @@ IL2CPP::Il2CppClass *Internal::BNM_Class$$FromIl2CppType(IL2CPP::Il2CppReflectio
     try {
         Load();
     } catch (...) {
-        BNM_LOG_ERR("BNM_Class$$FromIl2CppType Load exception");
+        BNM_LOG_ERR("BNM_Class$$FromIl2CppType Load exception: %s", Internal::GetExceptionTypeName());
     }
 
     return klass;
@@ -665,14 +673,19 @@ IL2CPP::Il2CppClass *Internal::BNM_Class$$FromIl2CppType(IL2CPP::Il2CppReflectio
 
 void Internal::Load() {
     SetupBNM();
+    BNM_LOG_DEBUG("Load stage: SetupBNM ok");
 
     LoadDefaults();
+    BNM_LOG_DEBUG("Load stage: LoadDefaults ok");
 
     BNM::Internal::SetupCoroutine();
+    BNM_LOG_DEBUG("Load stage: SetupCoroutine ok");
 
     BNM::ClassesManagement::ProcessCustomClasses();
+    BNM_LOG_DEBUG("Load stage: ProcessCustomClasses ok");
 
     BNM::Internal::LoadCoroutine();
+    BNM_LOG_DEBUG("Load stage: LoadCoroutine ok");
 
     states.state = true;
 

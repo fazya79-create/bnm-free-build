@@ -851,6 +851,8 @@ void Image$$GetTypes(const IL2CPP::Il2CppImage *image, bool exportedOnly, std::v
 
 void SetupCoroutine();
 void LoadCoroutine();
+const char *GetExceptionTypeName();
+extern void (*classInitFunc)(IL2CPP::Il2CppClass *);
 
 }
 
@@ -1184,7 +1186,7 @@ struct Class {
     template<typename ...Args>
     inline IL2CPP::Il2CppObject *CreateNewObjectParameters(Args &&...args) const;
 
-    inline void TryInit() const { if (_data) Internal::api.il2cpp_runtime_class_init(_data); }
+    inline void TryInit() const { if (_data && Internal::classInitFunc) Internal::classInitFunc(_data); }
 
     static IL2CPP::Il2CppObject *BoxObject(IL2CPP::Il2CppClass *_data, void *data);
     static IL2CPP::Il2CppArray *ArrayNew(IL2CPP::Il2CppClass *cls, IL2CPP::il2cpp_array_size_t length);
