@@ -21,8 +21,9 @@ void *MainThread(void *) {
         }
         sleep(1);
     }
-    LOGI("BNM-Free load result: %s", load ? "true" : "false");
-    if (load && BNM::IsLoaded()) {
+    for (int i = 0; i < 20 && !BNM::IsLoaded(); i++) sleep(1);
+    LOGI("BNM-Free load result: %s, loaded: %s", load ? "true" : "false", BNM::IsLoaded() ? "true" : "false");
+    if (BNM::IsLoaded()) {
         LOGI("BNM-Free loaded, testing resolve");
         auto cls = BNM::Class("UnityEngine", "GameObject", BNM::Image("UnityEngine.CoreModule.dll"));
         LOGI("GameObject class: %s", cls.str().c_str());
