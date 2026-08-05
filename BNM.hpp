@@ -2184,7 +2184,7 @@ inline IL2CPP::Il2CppObject *Class::CreateNewObjectParameters(Args &&...args) co
     auto ctor = GetMethod(Internal::constructorName, (int) sizeof...(Args));
     if (!ctor) return obj;
     auto method = ctor.GetInfo();
-    ((void (*)(IL2CPP::Il2CppObject *, Args..., IL2CPP::MethodInfo *)) method->methodPointer)(obj, std::forward<Args>(args)..., method);
+    ((void (*)(IL2CPP::Il2CppObject *, Args...)) method->methodPointer)(obj, std::forward<Args>(args)...);
     return obj;
 }
 

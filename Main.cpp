@@ -83,12 +83,16 @@ void *MainThread(void *) {
     LOGI("Test J: Camera.main = %p", (void *) mainCam);
     if (mainCam) {
         auto mbClass = BNM::Class("UnityEngine", "MonoBehaviour", BNM::Image("UnityEngine.CoreModule.dll"));
+        LOGI("Test J: mbClass = %s", mbClass.str().c_str());
         auto startCoro = mbClass.GetMethod("StartCoroutine", 1).cast<BNM::Method<BNM::IL2CPP::Il2CppObject *>>();
+        LOGI("Test J: StartCoroutine resolved = %s", startCoro.IsValid() ? "true" : "false");
         if (startCoro) {
             try {
                 startCoro.SetInstance(mainCam);
+                LOGI("Test J: creating coroutine");
                 auto coro = UnityDrivenTest();
                 auto unityCoro = coro.Get();
+                LOGI("Test J: unityCoro = %p, calling StartCoroutine", (void *) unityCoro);
                 startCoro(unityCoro);
                 LOGI("Test J: StartCoroutine called, waiting for Unity to drive it");
             } catch (...) {
