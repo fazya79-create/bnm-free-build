@@ -115,7 +115,7 @@ void *FindJump(void *start, uint8_t count) {
 
 void EmptyMethod() {}
 
-static void *OffsetInLib(void *offsetInMemory) {
+void *OffsetInLib(void *offsetInMemory) {
     if (offsetInMemory == nullptr) return nullptr;
     Dl_info info;
     BNM_dladdr(offsetInMemory, &info);

@@ -24,6 +24,7 @@ namespace PRIVATE_INTERNAL {
 
 void ResolveApi();
 void EmptyMethod();
+void *OffsetInLib(void *offsetInMemory);
 bool CheckHandle(void *handle);
 IL2CPP::Il2CppClass *TryGetClassWithoutImage(const std::string_view &_namespace, const std::string_view &_name);
 
