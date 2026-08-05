@@ -997,10 +997,11 @@ struct List {
     }
 
     inline void Shift(int32_t start, int32_t delta) {
+        auto oldSize = _size;
         if (delta < 0) start -= delta;
         if (start < _size) memmove(_items->GetItems() + start + delta, _items->GetItems() + start, (_size - start) * sizeof(T));
         _size += delta;
-        if (delta < 0) memset(_items->GetItems() + _size + delta, 0, -delta * sizeof(T));
+        if (delta < 0) memset(_items->GetItems() + oldSize + delta, 0, -delta * sizeof(T));
     }
 
     inline void RemoveAt(int32_t index) {
