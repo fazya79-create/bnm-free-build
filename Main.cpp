@@ -14,10 +14,11 @@ JavaVM *jvm;
 void *MainThread(void *) {
     bool load = false;
     for (int i = 0; i < 10; i++) {
-        void *handle = dlopen("libil2cpp.so", RTLD_NOW);
-        if (handle) {
-            load = BNM::Loading::TryLoadByDlfcnHandle(handle);
-            break;
+        JNIEnv *env = nullptr;
+        if (jvm && jvm->AttachCurrentThread(&env, nullptr) == JNI_OK && env) {
+            load = BNM::Loading::TryLoadByJNI(env, nullptr);
+            jvm->DetachCurrentThread();
+            if (load) break;
         }
         sleep(1);
     }
