@@ -412,7 +412,7 @@ static CustomClassInfo GetClassInfo(const CompileTimeClass &compileTimeClass) {
             }
         }
 
-        auto resolved = TryGetClassWithoutImage(ns, name);
+        auto resolved = Internal::TryGetClassWithoutImage(ns, name);
         if (resolved) continue;
 
         if (isLastClass) return {ns, name, classInfo->_imageName};
