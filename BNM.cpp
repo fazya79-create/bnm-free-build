@@ -1645,6 +1645,7 @@ Structures::Mono::Array<T> *Structures::Mono::Array<T>::Create(IL2CPP::il2cpp_ar
 }
 
 template Structures::Mono::Array<MonoType *> *Structures::Mono::Array<MonoType *>::Create(IL2CPP::il2cpp_array_size_t, bool);
+template Structures::Mono::Array<int> *Structures::Mono::Array<int>::Create(IL2CPP::il2cpp_array_size_t, bool);
 
 namespace BNM::Structures::Unity {
 
