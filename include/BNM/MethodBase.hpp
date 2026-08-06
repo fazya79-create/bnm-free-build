@@ -99,9 +99,7 @@ struct Method : public MethodBase {
         if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? ((Structures::Mono::String *) exc->message)->str().c_str() : "unknown");
         if constexpr (!std::is_void_v<Ret>) {
             if constexpr (std::is_pointer_v<Ret>) return (Ret) ret;
-            Ret val{};
-            memcpy(&val, &ret, sizeof(Ret));
-            return val;
+            return ret ? *(Ret *) ret : Ret{};
         }
     }
 
@@ -116,9 +114,7 @@ struct Method : public MethodBase {
         if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? ((Structures::Mono::String *) exc->message)->str().c_str() : "unknown");
         if constexpr (!std::is_void_v<Ret>) {
             if constexpr (std::is_pointer_v<Ret>) return (Ret) ret;
-            Ret val{};
-            memcpy(&val, &ret, sizeof(Ret));
-            return val;
+            return ret ? *(Ret *) ret : Ret{};
         }
     }
 

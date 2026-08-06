@@ -174,7 +174,7 @@ void *MainThread(void *) {
     indexOf.SetInstance((BNM::IL2CPP::Il2CppObject *) s1);
     LOGI("J3 IndexOf('l') invoke=%d operator()=%d", indexOf.Invoke((char) 'l'), indexOf((char) 'l'));
     auto convertClass = BNM::Class("System", "Convert", BNM::Image("mscorlib.dll"));
-    auto toInt32 = convertClass.GetMethod("ToInt32", 1).cast<BNM::Method<int>>();
+    auto toInt32 = convertClass.GetMethod("ToInt32", {strClass}).cast<BNM::Method<int>>();
     auto ex = BNM::Exceptions::TryInvoke([&]() { toInt32.Invoke(s1); });
     LOGI("J4 TryInvoke valid=%s name=%s msg=%s data=%p", ex.IsValid() ? "true" : "false", ex.ClassName().c_str(), ex.Message().c_str(), (void *) ex.Data());
     LOGI("J5 exception getException=%p", (void *) ex.GetException());
