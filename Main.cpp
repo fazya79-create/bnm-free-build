@@ -90,7 +90,7 @@ void *MainThread(void *) {
     LOGI("D3 GetHashCode invoke=%d operator()=%d", getHash.Invoke(), getHash());
     LOGI("D4 Equals(inst2)=%s", equals(inst2) ? "true" : "false");
     LOGI("D5 GetHashCode offset=%llx return=%s parent=%s", (unsigned long long) getHash.GetOffset(), getHash.GetReturnType().str().c_str(), getHash.GetParentClass().str().c_str());
-    LOGI("D6 get_IsIAP valid=%s rva=%llx", isIap.IsValid() ? "true" : "false", (unsigned long long) (isIap.GetInfo()->methodPointer - (BNM_PTR) BNM::GetIl2CppLibraryHandle()));
+    LOGI("D6 get_IsIAP valid=%s rva=%llx", isIap.IsValid() ? "true" : "false", (unsigned long long) ((BNM_PTR) isIap.GetInfo()->methodPointer - (BNM_PTR) BNM::GetIl2CppLibraryHandle()));
 
     bool isA1 = BNM::IsA((BNM::IL2CPP::Il2CppObject *) inst, currencyClass);
     bool isA2 = BNM::IsA((BNM::IL2CPP::Il2CppObject *) inst, goClass);
@@ -188,7 +188,7 @@ void *MainThread(void *) {
     LOGI("K3 Quaternion euler=(%.3f,%.3f,%.3f,%.3f) w=%.2f", q.x, q.y, q.z, q.w, q.w);
     LOGI("K4 Matrix4x4 identity m00=%.0f m15=%.0f", BNM::Structures::Unity::Matrix4x4::identity.m_Data[0], BNM::Structures::Unity::Matrix4x4::identity.m_Data[15]);
     auto rect = BNM::Structures::Unity::Rect(1.f, 2.f, 3.f, 4.f);
-    LOGI("K5 Rect x=%.1f y=%.1f w=%.1f h=%.1f", rect.x, rect.y, rect.width, rect.height);
+    LOGI("K5 Rect x=%.1f y=%.1f w=%.1f h=%.1f", rect.x, rect.y, rect.w, rect.h);
 
     auto boxed = BNM::Defaults::Box(123);
     LOGI("L1 Box(123)=%p IsValid=%s", boxed, BNM::Defaults::Get<int>().IsValid() ? "true" : "false");

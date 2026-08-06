@@ -2237,6 +2237,7 @@ struct Vector3Int;
 }
 
 
+namespace BNM {
 namespace UnityEngine {
 
 struct Object : public BNM::IL2CPP::Il2CppObject {
@@ -2263,4 +2264,4 @@ inline bool IsSameUnityObject(T1 o1, T2 o2) {
 }
 
 }
-
+}
