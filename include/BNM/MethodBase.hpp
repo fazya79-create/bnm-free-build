@@ -108,15 +108,30 @@ struct Method : public MethodBase {
     template<typename ...Parameters>
     inline Ret Invoke(Parameters ...parameters) const {
         if (!_data) return PRIVATE_INTERNAL::ReturnEmpty<Ret>();
-        void *args[] = {(void *) parameters...};
+        IL2CPP::Il2CppObject *boxed[sizeof...(Parameters) > 0 ? sizeof...(Parameters) : 1];
+        size_t idx = 0;
+        ((boxed[idx] = BoxInvokeArg(_data, idx, parameters), ++idx), ...);
         IL2CPP::Il2CppException *exc = nullptr;
-        auto ret = Internal::api.il2cpp_runtime_invoke(_data, _instance, args, &exc);
+        auto ret = Internal::api.il2cpp_runtime_invoke(_data, _instance, sizeof...(Parameters) > 0 ? (void **) boxed : nullptr, &exc);
         if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? ((Structures::Mono::String *) exc->message)->str().c_str() : "unknown");
         if constexpr (!std::is_void_v<Ret>) {
             if constexpr (std::is_pointer_v<Ret>) return (Ret) ret;
             Ret val{};
             memcpy(&val, &ret, sizeof(Ret));
             return val;
+        }
+    }
+
+private:
+    template<typename T>
+    static IL2CPP::Il2CppObject *BoxInvokeArg(const IL2CPP::MethodInfo *method, size_t index, T value) {
+        if constexpr (std::is_pointer_v<T>) {
+            return (IL2CPP::Il2CppObject *) value;
+        } else {
+            auto type = Internal::api.il2cpp_method_get_param(method, (uint32_t) index);
+            auto cls = type ? Internal::api.il2cpp_class_from_il2cpp_type(type) : nullptr;
+            if (!cls || !Internal::api.il2cpp_value_box) return nullptr;
+            return Internal::api.il2cpp_value_box(cls, (void *) &value);
         }
     }
 };
