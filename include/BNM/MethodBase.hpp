@@ -124,7 +124,7 @@ struct Method : public MethodBase {
 
 private:
     template<typename T>
-    static IL2CPP::Il2CppObject *BoxInvokeArg(const IL2CPP::MethodInfo *method, size_t index, T value) {
+    static IL2CPP::Il2CppObject *BoxInvokeArg(IL2CPP::MethodInfo *method, size_t index, T value) {
         if constexpr (std::is_pointer_v<T>) {
             return (IL2CPP::Il2CppObject *) value;
         } else {
