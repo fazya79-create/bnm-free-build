@@ -99,7 +99,7 @@ struct Method : public MethodBase {
         if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? ((Structures::Mono::String *) exc->message)->str().c_str() : "unknown");
         if constexpr (!std::is_void_v<Ret>) {
             if constexpr (std::is_pointer_v<Ret>) return (Ret) ret;
-            return ret ? *(Ret *) ret : Ret{};
+            return ret ? *(Ret *) Internal::api.il2cpp_object_unbox((IL2CPP::Il2CppObject *) ret) : Ret{};
         }
     }
 
@@ -114,7 +114,7 @@ struct Method : public MethodBase {
         if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? ((Structures::Mono::String *) exc->message)->str().c_str() : "unknown");
         if constexpr (!std::is_void_v<Ret>) {
             if constexpr (std::is_pointer_v<Ret>) return (Ret) ret;
-            return ret ? *(Ret *) ret : Ret{};
+            return ret ? *(Ret *) Internal::api.il2cpp_object_unbox((IL2CPP::Il2CppObject *) ret) : Ret{};
         }
     }
 

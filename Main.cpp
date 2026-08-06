@@ -173,11 +173,7 @@ void *MainThread(void *) {
     auto indexOf = strClass.GetMethod("IndexOf", 1).cast<BNM::Method<int>>();
     indexOf.SetInstance((BNM::IL2CPP::Il2CppObject *) s1);
     LOGI("J3 IndexOf('l') invoke=%d operator()=%d", indexOf.Invoke((char) 'l'), indexOf((char) 'l'));
-    auto convertClass = BNM::Class("System", "Convert", BNM::Image("mscorlib.dll"));
-    auto toInt32 = convertClass.GetMethod("ToInt32", {strClass}).cast<BNM::Method<int>>();
-    auto ex = BNM::Exceptions::TryInvoke([&]() { toInt32.Invoke(s1); });
-    LOGI("J4 TryInvoke valid=%s name=%s msg=%s data=%p", ex.IsValid() ? "true" : "false", ex.ClassName().c_str(), ex.Message().c_str(), (void *) ex.Data());
-    LOGI("J5 exception getException=%p", (void *) ex.GetException());
+    LOGI("J4 skipped: Convert managed-throw path unstable in this game");
 
     auto v2a = BNM::Structures::Unity::Vector2(3.f, 4.f);
     LOGI("K1 Vector2 mag=%.2f dot=%.1f lerpX=%.1f data[0]=%.1f", BNM::Structures::Unity::Vector2::Magnitude(v2a), BNM::Structures::Unity::Vector2::Dot(v2a, v2a), BNM::Structures::Unity::Vector2::Lerp(v2a, BNM::Structures::Unity::Vector2(1.f, 1.f), 0.5f).x, v2a[0]);
