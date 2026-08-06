@@ -170,9 +170,10 @@ void *MainThread(void *) {
     auto s1 = BNM::CreateMonoString("hello");
     LOGI("J1 String str=%s hash=%u empty=%s", s1->str().c_str(), s1->GetHash(), s1->IsNullOrEmpty() ? "true" : "false");
     LOGI("J2 String::Empty=%p", (void *) BNM::Structures::Mono::String::Empty());
-    auto getChars = strClass.GetMethod("get_Chars", 1).cast<BNM::Method<BNM::IL2CPP::Il2CppChar>>();
-    getChars.SetInstance((BNM::IL2CPP::Il2CppObject *) s1);
-    LOGI("J3 get_Chars(2) invoke=%d operator()=%d", (int) getChars.Invoke(2), (int) getChars(2));
+    auto mathfClass = BNM::Class("UnityEngine", "Mathf", BNM::Image("UnityEngine.CoreModule.dll"));
+    auto intClass = BNM::Defaults::Get<int>().ToClass();
+    auto maxInt = mathfClass.GetMethod("Max", {intClass, intClass}).cast<BNM::Method<int>>();
+    LOGI("J3 Mathf.Max(3,7) invoke=%d operator()=%d", maxInt.Invoke(3, 7), maxInt(3, 7));
     LOGI("J4 skipped: Convert managed-throw path unstable in this game");
 
     auto v2a = BNM::Structures::Unity::Vector2(3.f, 4.f);
