@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 namespace BNM::Obfuscation {
@@ -47,25 +48,23 @@ struct Block {
 
 constexpr uint32_t BuildSalt() { return Fnv1a32(__TIME__, 8); }
 
-template<size_t N>
-const char *Decrypt(const Block<N> &block) {
-    static thread_local char buf[N];
-    block.Restore(buf);
-    return buf;
-}
+
 
 template<size_t N>
 constexpr size_t StrSize(const char (&)[N]) { return N; }
 
 }
 
-#define BNM_OBFUSCATE_IMPL(str, salt, fn) \
-    ([]() noexcept { \
+#define BNM_OBFUSCATE(str) \
+    ([]() { \
         constexpr auto bnm_obf_block = ::BNM::Obfuscation::Block<::BNM::Obfuscation::StrSize(str)>(str, \
-            ::BNM::Obfuscation::Mix64((uint64_t) ::BNM::Obfuscation::Fnv1a32(str, sizeof(str) - 1) ^ (uint64_t) (salt) ^ (uint64_t) (__COUNTER__) * 0x9e3779b97f4a7c15ull ^ (uint64_t) ::BNM::Obfuscation::Fnv1a32(fn, 0)), \
-            ::BNM::Obfuscation::Mix64((uint64_t) (__LINE__) * 0x9e3779b97f4a7c15ull ^ (uint64_t) (__COUNTER__) ^ (uint64_t) (salt) ^ (uint64_t) ::BNM::Obfuscation::Fnv1a32(fn, 0))); \
-        return ::BNM::Obfuscation::Decrypt(bnm_obf_block); \
+            ::BNM::Obfuscation::Mix64((uint64_t) ::BNM::Obfuscation::Fnv1a32(str, sizeof(str) - 1) ^ (uint64_t) ::BNM::Obfuscation::BuildSalt() ^ (uint64_t) (__COUNTER__) * 0x9e3779b97f4a7c15ull), \
+            ::BNM::Obfuscation::Mix64((uint64_t) (__LINE__) * 0x9e3779b97f4a7c15ull ^ (uint64_t) (__COUNTER__) ^ (uint64_t) ::BNM::Obfuscation::BuildSalt())); \
+        static thread_local char bnm_obf_buf[::BNM::Obfuscation::StrSize(str)]; \
+        using bnm_obf_fn_t = size_t (::BNM::Obfuscation::Block<::BNM::Obfuscation::StrSize(str)>::*)(char *) const; \
+        static bnm_obf_fn_t bnm_obf_restore = &::BNM::Obfuscation::Block<::BNM::Obfuscation::StrSize(str)>::Restore; \
+        (bnm_obf_block.*bnm_obf_restore)(bnm_obf_buf); \
+        return bnm_obf_buf; \
     }())
 
-#define BNM_OBFUSCATE(str) BNM_OBFUSCATE_IMPL(str, ::BNM::Obfuscation::BuildSalt(), __FUNCTION__)
 #define BNM_OBFUSCATE_TMP(str) BNM_OBFUSCATE(str)
