@@ -127,7 +127,9 @@ private:
             auto type = Internal::api.il2cpp_method_get_param(method, (uint32_t) index);
             auto cls = type ? Internal::api.il2cpp_class_from_il2cpp_type(type) : nullptr;
             if (!cls || !Internal::api.il2cpp_value_box) return nullptr;
-            return Internal::api.il2cpp_value_box(cls, (void *) &value);
+            unsigned long long storage = 0;
+            memcpy(&storage, &value, sizeof(T));
+            return Internal::api.il2cpp_value_box(cls, &storage);
         }
     }
 };
