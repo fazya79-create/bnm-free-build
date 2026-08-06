@@ -43,7 +43,7 @@ inline DefaultTypeRef Get();
 template<typename T>
 inline IL2CPP::Il2CppObject *Box(T value) {
     if constexpr (std::is_pointer_v<T>) return (IL2CPP::Il2CppObject *) value;
-    return BNM::Defaults::Get<T>().ToClass().BoxObject(value);
+    return BNM::Class::BoxObject(BNM::Defaults::Get<T>().ToClass().GetClass(), &value);
 }
 
 template<typename T>
