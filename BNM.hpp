@@ -63,7 +63,6 @@ inline void Unhook(PTR_T ptr) {
 #define BNM_malloc malloc
 #define BNM_free free
 
-
 namespace BNM {
 
 template<typename T_NEW, typename T_OLD>

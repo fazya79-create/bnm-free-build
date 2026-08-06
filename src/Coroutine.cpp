@@ -213,4 +213,3 @@ void Loading::AddOnLoadedEvent(void (*event)()) {
 void Loading::ClearOnLoadedEvents() {
     Internal::onLoadedEvents.clear();
 }
-

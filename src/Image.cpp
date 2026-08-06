@@ -55,4 +55,3 @@ std::vector<BNM::Image> Image::GetImages() {
 
     return ret;
 }
-

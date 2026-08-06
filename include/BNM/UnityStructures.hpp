@@ -16,8 +16,6 @@ struct Color;
 struct Quaternion;
 struct Vector3Int;
 
-
-
     struct Vector2;
     struct Vector3;
 
@@ -100,7 +98,6 @@ struct Vector3Int;
         static const Vector2 up;
         static const Vector2 zero;
     };
-
 
     float Vector2::Angle(Vector2 a, Vector2 b) {
         float v = Dot(a, b) / (Magnitude(a) * Magnitude(b));
@@ -239,10 +236,6 @@ struct Vector3Int;
         };
     };
 
-
-
-
-
     struct Quaternion;
 
     struct Vector3 {
@@ -341,7 +334,6 @@ struct Vector3Int;
         static const Vector3 up;
         static const Vector3 zero;
     };
-
 
     float Vector3::Angle(Vector3 from, Vector3 to) {
         float v = Dot(from, to) / (Magnitude(from) * Magnitude(to));
@@ -596,9 +588,6 @@ struct Vector3Int;
         };
     };
 
-
-
-
     struct Vector4;
 
     inline bool IsFinite(float value) { return (*(uint32_t *) &value & 0x7f800000) != 0x7f800000; }
@@ -648,10 +637,6 @@ struct Vector3Int;
         static const Vector4 zero;
         static const Vector4 one;
     };
-
-
-
-
 
     struct Vector4;
 
@@ -721,9 +706,6 @@ struct Vector3Int;
             int rgba;
         };
     };
-
-
-
 
     struct Quaternion {
         union {
@@ -1055,18 +1037,11 @@ struct Vector3Int;
         return res;
     }
 
-
-
-
     struct Ray {
         Vector3 m_Origin{}, m_Direction{};
 
         inline std::string str() { return std::string("m_Origin: ") + m_Origin.str() + std::string(", m_Direction: ") + m_Direction.str(); }
     };
-
-
-
-
 
     struct RaycastHit {
         Vector3 point{}, normal{};
@@ -1079,10 +1054,6 @@ struct Vector3Int;
         inline std::string str() { return std::string("Point: ") + point.str() + std::string(", Normal: ") + normal.str() + std::string(", FaceID: ") + std::to_string(faceID) + std::string(", Distance: ") + std::to_string(distance) + std::string(", UV: ") + UV.str() + std::string(", m_Collider: ") + std::to_string((BNM_PTR)m_Collider); }
     };
 
-
-
-
-
     struct RaycastHit2D {
         Vector2 centroid, point, normal;
         float distance, fraction;
@@ -1091,8 +1062,6 @@ struct Vector3Int;
 
         inline std::string str() { return std::string("centroid: ") + centroid.str() + std::string(", point: ") + point.str() + std::string(", normal: ") + normal.str() + std::string(", Distance: ") + std::to_string(distance) + std::string(", fraction: ") + std::to_string(fraction) + std::string(", m_Collider: ") + std::to_string((BNM_PTR)m_Collider); }
     };
-
-
 
     struct Rect {
         union {
@@ -1107,8 +1076,6 @@ struct Vector3Int;
         inline bool operator ==(const Rect& other) const { return x == other.x && y == other.y && w == other.w && h == other.h; }
         inline bool operator !=(const Rect& other) const = default;
     };
-
-
 
     struct Matrix4x4;
 
@@ -1323,7 +1290,7 @@ struct Vector3Int;
                 return false;
             }
             x /= mag;
-            
+
             Vector3 y(Vector3::Cross(z, x));
             if (!CompareApproximately(Vector3::SqrMagnitude(y), 1.0F)) return false;
 
@@ -1397,12 +1364,8 @@ struct Vector3Int;
         static const Matrix3x3 identity;
     };
 
-
-
 #define MAT(m, r, c) (m)[(c)*4+(r)]
 #define RETURN_ZERO do { for (int i=0;i<16;i++) out[i] = 0.0F; return false; } while(0)
-
-
 
     inline void QuaternionToMatrix(const Quaternion& q, struct Matrix4x4& m);
 
@@ -2235,7 +2198,6 @@ struct Vector3Int;
 }
 }
 }
-
 
 namespace BNM {
 namespace UnityEngine {

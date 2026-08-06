@@ -371,4 +371,3 @@ Class Internal::GetReference(Class target) {
     using MakeByrefFn = MonoType *(*)(void *);
     return ((MakeByrefFn) vmData.RuntimeType$$make_byref_type.GetOffset())(target.GetMonoType());
 }
-

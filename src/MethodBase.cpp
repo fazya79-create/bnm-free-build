@@ -80,7 +80,6 @@ BNM::Class MethodBase::GetParentClass() const {
     return Internal::api.il2cpp_method_get_class(_data);
 }
 
-
 namespace BNM::PRIVATE_FieldUtils {
     void GetStaticValue(IL2CPP::FieldInfo *info, void *value) {
         return Internal::api.il2cpp_field_static_get_value(info, value);
@@ -111,4 +110,3 @@ bool BNM::VirtualHookImpl(Class targetClass, IL2CPP::MethodInfo *info, void *new
     vTable.methodPtr = (IL2CPP::Il2CppMethodPointer) newMet;
     return true;
 }
-

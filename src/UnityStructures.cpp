@@ -2,7 +2,6 @@
 
 using namespace BNM;
 
-
 namespace BNM::Structures::Unity {
     void *RaycastHit::GetCollider() const {
         if (!m_Collider || (BNM_PTR) m_Collider < 0) return {};
@@ -46,7 +45,6 @@ namespace BNM::Structures::Unity {
     const Vector2 Vector2::up = {0.f, 1.f};
     const Vector2 Vector2::zero = {0.f, 0.f};
 
-
     const Vector3 Vector3::positiveInfinity = {floatInf, floatInf, floatInf};
     const Vector3 Vector3::negativeInfinity = {-floatInf, -floatInf, -floatInf};
     const Vector3 Vector3::back = {0.f, 0.f, -1.f};
@@ -62,7 +60,6 @@ namespace BNM::Structures::Unity {
     const Vector4 Vector4::negativeInfinity = {-floatInf, -floatInf, -floatInf, -floatInf};
     const Vector4 Vector4::zero = {0.f, 0.f, 0.f, 0.f};
     const Vector4 Vector4::one = {1.f, 1.f, 1.f, 1.f};
-
 
     const Quaternion Quaternion::identity = {0.f, 0.f, 0.f, 1.f};
 
@@ -107,4 +104,3 @@ namespace BNM::Structures::Unity {
     }
 
 }
-

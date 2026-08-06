@@ -45,4 +45,3 @@ BNM::Class EventBase::GetParentClass() const {
     if (!_data) return {};
     return _data->parent;
 }
-

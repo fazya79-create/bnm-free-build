@@ -276,7 +276,6 @@ void ResolveApi() {
 
 }
 
-
 void *BNM::GetExternMethod(const std::string_view &str) {
     auto ret = Internal::api.il2cpp_resolve_icall(str.data());
     BNM_LOG_WARN_IF(!ret, "GetExternMethod failed: %s", str.data());

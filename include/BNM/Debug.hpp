@@ -1,7 +1,5 @@
 #pragma once
 
-
-
 #pragma once
 #if __cplusplus < 202002L
 #error "BNM-Free requires C++20 and above!"
@@ -47,7 +45,6 @@ typedef unsigned int BNM_PTR;
 #define BNM_LOG_ERR_IF(condition, ...) if (condition) ((void)__android_log_print(6, "BNM-Free", __VA_ARGS__))
 #define BNM_LOG_WARN(...) ((void)__android_log_print(5, "BNM-Free", __VA_ARGS__))
 #define BNM_LOG_WARN_IF(condition, ...) if (condition) ((void)__android_log_print(5, "BNM-Free", __VA_ARGS__))
-
 
 #if defined(__ARM_ARCH_7A__)
 #define CURRENT_ARCH "armeabi-v7a"

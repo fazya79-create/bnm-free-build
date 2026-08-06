@@ -53,4 +53,3 @@ void BNM::Internal::LoadDefaults() {
     UnityObject = TryGetClassInImage(image, UnityEngineStr, "Object");
     MonoBehaviour = TryGetClassInImage(image, UnityEngineStr, "MonoBehaviour");
 }
-

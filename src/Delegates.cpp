@@ -70,4 +70,3 @@ DelegateBase *MulticastDelegateBase::Add(BNM::MethodBase method) {
     Add(delegate);
     return delegate;
 }
-

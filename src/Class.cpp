@@ -422,4 +422,3 @@ Class CompileTimeClass::ToClass() {
     _loadedClass.TryInit();
     return _loadedClass;
 }
-
