@@ -26,15 +26,15 @@ void *MainThread(void *) {
     LOGI("load=%s loaded=%s", load ? "true" : "false", BNM::IsLoaded() ? "true" : "false");
     if (!BNM::IsLoaded()) return nullptr;
 
-    auto appClass = BNM::Class("UnityEngine", "Application", BNM::Image("UnityEngine.CoreModule.dll"));
+    auto appClass = BNM::Class(BNM_OBFUSCATE("UnityEngine"), BNM_OBFUSCATE("Application"), BNM::Image(BNM_OBFUSCATE("UnityEngine.CoreModule.dll")));
     LOGI("Application class: %s", appClass ? appClass.str().c_str() : "(null)");
 
-    auto getVer = appClass.GetMethod("get_unityVersion", 0).cast<BNM::Method<BNM::Structures::Mono::String *>>();
+    auto getVer = appClass.GetMethod(BNM_OBFUSCATE("get_unityVersion"), 0).cast<BNM::Method<BNM::Structures::Mono::String *>>();
     LOGI("get_unityVersion resolved: %s", getVer.IsValid() ? "true" : "false");
     auto ver = getVer();
     LOGI("Unity version: %s", ver ? ver->str().c_str() : "(null)");
 
-    auto getVer2 = appClass.GetMethod("get_version", 0).cast<BNM::Method<BNM::Structures::Mono::String *>>();
+    auto getVer2 = appClass.GetMethod(BNM_OBFUSCATE("get_version"), 0).cast<BNM::Method<BNM::Structures::Mono::String *>>();
     auto ver2 = getVer2();
     LOGI("Application version: %s", ver2 ? ver2->str().c_str() : "(null)");
 

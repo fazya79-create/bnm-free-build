@@ -34,8 +34,7 @@ typedef int BNM_INT_PTR;
 typedef unsigned int BNM_PTR;
 #endif
 
-#define BNM_OBFUSCATE(str) str
-#define BNM_OBFUSCATE_TMP(str) str
+#include "Obfuscation.hpp"
 #define BNM_VER "1.0.0"
 
 #define BNM_LOG_INFO(...) ((void)__android_log_print(4, "BNM-Free", __VA_ARGS__))
