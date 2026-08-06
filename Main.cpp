@@ -170,11 +170,12 @@ void *MainThread(void *) {
     auto s1 = BNM::CreateMonoString("hello");
     LOGI("J1 String str=%s hash=%u empty=%s", s1->str().c_str(), s1->GetHash(), s1->IsNullOrEmpty() ? "true" : "false");
     LOGI("J2 String::Empty=%p", (void *) BNM::Structures::Mono::String::Empty());
-    auto substring = strClass.GetMethod("Substring", 1).cast<BNM::Method<BNM::Structures::Mono::String *>>();
-    substring.SetInstance((BNM::IL2CPP::Il2CppObject *) s1);
-    auto subOk = substring.Invoke(2);
-    LOGI("J3 Substring(2)=%s", subOk ? subOk->str().c_str() : "(null)");
-    auto ex = BNM::Exceptions::TryInvoke([&]() { substring.Invoke(99); });
+    auto indexOf = strClass.GetMethod("IndexOf", 1).cast<BNM::Method<int>>();
+    indexOf.SetInstance((BNM::IL2CPP::Il2CppObject *) s1);
+    LOGI("J3 IndexOf('l') invoke=%d operator()=%d", indexOf.Invoke((char) 'l'), indexOf((char) 'l'));
+    auto convertClass = BNM::Class("System", "Convert", BNM::Image("mscorlib.dll"));
+    auto toInt32 = convertClass.GetMethod("ToInt32", 1).cast<BNM::Method<int>>();
+    auto ex = BNM::Exceptions::TryInvoke([&]() { toInt32.Invoke(s1); });
     LOGI("J4 TryInvoke valid=%s name=%s msg=%s data=%p", ex.IsValid() ? "true" : "false", ex.ClassName().c_str(), ex.Message().c_str(), (void *) ex.Data());
     LOGI("J5 exception getException=%p", (void *) ex.GetException());
 
