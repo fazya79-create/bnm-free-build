@@ -170,7 +170,8 @@ void *MainThread(void *) {
     auto s1 = BNM::CreateMonoString("hello");
     LOGI("J1 String str=%s hash=%u empty=%s", s1->str().c_str(), s1->GetHash(), s1->IsNullOrEmpty() ? "true" : "false");
     LOGI("J2 String::Empty=%p", (void *) BNM::Structures::Mono::String::Empty());
-    auto indexOf = strClass.GetMethod("IndexOf", 1).cast<BNM::Method<int>>();
+    auto charClass = BNM::Class("System", "Char", BNM::Image("mscorlib.dll"));
+    auto indexOf = strClass.GetMethod("IndexOf", {charClass}).cast<BNM::Method<int>>();
     indexOf.SetInstance((BNM::IL2CPP::Il2CppObject *) s1);
     LOGI("J3 IndexOf('l') invoke=%d operator()=%d", indexOf.Invoke((char) 'l'), indexOf((char) 'l'));
     LOGI("J4 skipped: Convert managed-throw path unstable in this game");
