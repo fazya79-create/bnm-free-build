@@ -30,7 +30,7 @@ struct CompileTimeClass {
     };
 
     struct _GenericInfo : _BaseInfo {
-        std::vector<CompileTimeClass> _types{};
+        std::vector<std::shared_ptr<CompileTimeClass>> _types{};
         inline _GenericInfo() : _BaseInfo(_BaseType::Generic) {}
     };
 
@@ -64,7 +64,8 @@ struct CompileTimeClass {
     }
     inline void AddGeneric(const std::vector<CompileTimeClass> &types) {
         auto info = std::make_shared<_GenericInfo>();
-        info->_types = types;
+        info->_types.reserve(types.size());
+        for (const auto &type : types) info->_types.push_back(std::make_shared<CompileTimeClass>(type));
         _stack.push_back(std::move(info));
     }
 

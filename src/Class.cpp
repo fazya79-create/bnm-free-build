@@ -422,7 +422,12 @@ Class CompileTimeClass::ToClass() {
                     BNM_LOG_WARN("Generic parent not resolved");
                     break;
                 }
-                _loadedClass = Internal::TryMakeGenericClass(_loadedClass, genericInfo->_types);
+                std::vector<CompileTimeClass> resolvedGenericTypes;
+                resolvedGenericTypes.reserve(genericInfo->_types.size());
+                for (const auto &typePtr : genericInfo->_types) {
+                    if (typePtr) resolvedGenericTypes.push_back(*typePtr);
+                }
+                _loadedClass = Internal::TryMakeGenericClass(_loadedClass, resolvedGenericTypes);
             } break;
             case _BaseType::None:
             case _BaseType::MaxCount: break;
