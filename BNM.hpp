@@ -115,13 +115,29 @@ inline bool CompareImageName(IL2CPP::Il2CppImage *image, const std::string_view 
 }
 
 inline std::vector<IL2CPP::Il2CppAssembly *> &GetAllAssemblies() {
-    if (!assembliesCache.empty()) return assembliesCache;
-    if (!api.il2cpp_domain_get) return assembliesCache;
+    if (!api.il2cpp_domain_get || !api.il2cpp_domain_get_assemblies) return assembliesCache;
     auto domain = api.il2cpp_domain_get();
     if (!domain) return assembliesCache;
+
     size_t size = 0;
     auto assemblies = api.il2cpp_domain_get_assemblies(domain, &size);
+    if (!assemblies) return assembliesCache;
+
+    if (size == lastDomainAssembliesCount && !assembliesCache.empty()) return assembliesCache;
+
+    std::vector<IL2CPP::Il2CppAssembly *> custom{};
+    for (auto assembly : assembliesCache) {
+        bool fromDomain = false;
+        for (size_t i = 0; i < size; ++i) if (assemblies[i] == assembly) { fromDomain = true; break; }
+        if (!fromDomain) custom.push_back(assembly);
+    }
+
+    assembliesCache.clear();
+    assembliesCache.reserve(size + custom.size());
     for (size_t i = 0; i < size; ++i) if (assemblies[i]) assembliesCache.push_back(assemblies[i]);
+    for (auto assembly : custom) assembliesCache.push_back(assembly);
+
+    lastDomainAssembliesCount = size;
     return assembliesCache;
 }
 
@@ -197,8 +213,27 @@ inline IL2CPP::Il2CppObject *Class::CreateNewObjectParameters(Args &&...args) co
     auto ctor = GetMethod(Internal::constructorName, (int) sizeof...(Args));
     if (!ctor) return obj;
     auto method = ctor.GetInfo();
+    if (!method || !method->methodPointer) return obj;
     ((void (*)(IL2CPP::Il2CppObject *, Args...)) method->methodPointer)(obj, std::forward<Args>(args)...);
     return obj;
+}
+
+namespace Structures::Mono {
+
+template<typename T>
+inline Array<T> *Array<T>::Create(IL2CPP::il2cpp_array_size_t size, bool zeroed) {
+    auto &api = Internal::api;
+    if (!api.il2cpp_array_new) return nullptr;
+
+    auto elementClass = BNM::Defaults::Get<T>().ToClass();
+    if (!elementClass) return nullptr;
+    auto arr = (Array<T> *) api.il2cpp_array_new(elementClass._data, size);
+    if (!arr) return nullptr;
+
+    if (zeroed && size) memset((char *) arr + sizeof(IL2CPP::Il2CppArray), 0, size * sizeof(T));
+    return arr;
+}
+
 }
 
 }

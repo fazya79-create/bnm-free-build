@@ -15,6 +15,7 @@ void *il2cppLibraryHandle{};
 void *currentFinderData = &il2cppLibraryHandle;
 VMData vmData{};
 std::vector<IL2CPP::Il2CppAssembly *> assembliesCache{};
+size_t lastDomainAssembliesCount{};
 MethodFinder currentFinderMethod = BasicFinder;
 
 void *BNM_il2cpp_init_origin{};
@@ -24,7 +25,6 @@ IL2CPP::Il2CppClass *(*old_BNM_Class$$FromIl2CppType)(IL2CPP::Il2CppReflectionTy
 
 std::string_view constructorName = ".ctor";
 IL2CPP::Il2CppClass *customListTemplateClass{};
-std::map<uint32_t, IL2CPP::Il2CppClass *> customListsMap{};
 int32_t finalizerSlot = -1;
 std::vector<void (*)()> onLoadedEvents{};
 
@@ -252,6 +252,7 @@ void ResolveApi() {
     RESOLVE_API(il2cpp_image_get_entry_point);
     RESOLVE_API(il2cpp_image_get_class_count);
     RESOLVE_API(il2cpp_image_get_class);
+    RESOLVE_API(il2cpp_image_get_types);
     RESOLVE_API(il2cpp_capture_memory_snapshot);
     RESOLVE_API(il2cpp_free_captured_memory_snapshot);
     RESOLVE_API(il2cpp_set_find_plugin_callback);
@@ -277,8 +278,10 @@ void ResolveApi() {
 }
 
 void *BNM::GetExternMethod(const std::string_view &str) {
-    auto ret = Internal::api.il2cpp_resolve_icall(str.data());
-    BNM_LOG_WARN_IF(!ret, "GetExternMethod failed: %s", str.data());
+    if (!Internal::api.il2cpp_resolve_icall) return nullptr;
+    std::string name(str);
+    auto ret = Internal::api.il2cpp_resolve_icall(name.c_str());
+    BNM_LOG_WARN_IF(!ret, "GetExternMethod failed: %s", name.c_str());
     return (void *) ret;
 }
 
@@ -298,25 +301,30 @@ void *BNM::GetIl2CppLibraryHandle() {
 }
 
 bool BNM::AttachIl2Cpp() {
+    if (!Internal::api.il2cpp_thread_attach || !Internal::api.il2cpp_domain_get) return false;
     if (CurrentIl2CppThread()) return false;
     Internal::api.il2cpp_thread_attach(Internal::api.il2cpp_domain_get());
     return true;
 }
 
 IL2CPP::Il2CppThread *BNM::CurrentIl2CppThread() {
+    if (!Internal::api.il2cpp_thread_current) return nullptr;
     return Internal::api.il2cpp_thread_current();
 }
 
 void BNM::DetachIl2Cpp() {
+    if (!Internal::api.il2cpp_thread_detach) return;
     auto thread = CurrentIl2CppThread();
     if (!thread) return;
     Internal::api.il2cpp_thread_detach(thread);
 }
 
 void *BNM::Allocate(size_t size) {
+    if (!Internal::api.il2cpp_gc_alloc_fixed) return nullptr;
     return Internal::api.il2cpp_gc_alloc_fixed(size);
 }
 
 void BNM::Free(void *ptr) {
+    if (!ptr || !Internal::api.il2cpp_gc_free_fixed) return;
     return Internal::api.il2cpp_gc_free_fixed(ptr);
 }

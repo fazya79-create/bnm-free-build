@@ -25,6 +25,8 @@ void *MainThread(void *) {
     for (int i = 0; i < 20 && !BNM::IsLoaded(); i++) sleep(1);
     LOGI("load=%s loaded=%s", load ? "true" : "false", BNM::IsLoaded() ? "true" : "false");
     if (!BNM::IsLoaded()) return nullptr;
+    
+    bool attached = BNM::AttachIl2Cpp();
 
     auto appClass = BNM::Class(BNM_OBFUSCATE("UnityEngine"), BNM_OBFUSCATE("Application"), BNM::Image(BNM_OBFUSCATE("UnityEngine.CoreModule.dll")));
     LOGI("Application class: %s", appClass ? appClass.str().c_str() : "(null)");
@@ -39,6 +41,8 @@ void *MainThread(void *) {
     LOGI("Application version: %s", ver2 ? ver2->str().c_str() : "(null)");
 
     LOGI("TEST DONE");
+
+    if (attached) BNM::DetachIl2Cpp();
     return nullptr;
 }
 

@@ -17,7 +17,10 @@ struct MulticastDelegateBase;
 
 namespace PRIVATE_INTERNAL {
     template<typename Ret>
-    inline Ret ReturnEmpty() { return {}; }
+    inline Ret ReturnEmpty() {
+        if constexpr (!std::is_void_v<Ret>) return Ret{};
+        else return;
+    }
 
     inline IL2CPP::Il2CppClass *&GetMethodClass(IL2CPP::MethodInfo *method) { return method->klass; }
 }
@@ -281,6 +284,7 @@ extern States states;
 extern void *il2cppLibraryHandle;
 extern void *currentFinderData;
 extern std::vector<IL2CPP::Il2CppAssembly *> assembliesCache;
+extern size_t lastDomainAssembliesCount;
 
 typedef void *(*MethodFinder)(const char *name, void *userData);
 extern MethodFinder currentFinderMethod;
@@ -295,7 +299,7 @@ Class GetPointer(Class target);
 Class GetReference(Class target);
 void *GetIl2CppMethod(const char *methodName);
 void Load();
-void SetupBNM();
+bool SetupBNM();
 void LateInit(void *il2cpp_class_from_il2cpp_type_addr);
 void LoadDefaults();
 
@@ -315,11 +319,8 @@ extern IL2CPP::Il2CppClass *(*old_BNM_Class$$FromIl2CppType)(IL2CPP::Il2CppRefle
 
 extern std::string_view constructorName;
 extern IL2CPP::Il2CppClass *customListTemplateClass;
-extern std::map<uint32_t, IL2CPP::Il2CppClass *> customListsMap;
 extern int32_t finalizerSlot;
 extern std::vector<void (*)()> onLoadedEvents;
-
-void Image$$GetTypes(const IL2CPP::Il2CppImage *image, bool exportedOnly, std::vector<IL2CPP::Il2CppClass *> *target);
 
 void SetupCoroutine();
 void LoadCoroutine();

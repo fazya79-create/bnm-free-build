@@ -65,48 +65,53 @@ struct Method : public MethodBase {
         if (sizeof...(Parameters) != _data->parameters_count) {
             BNM_LOG_WARN("Method::Call param count mismatch: %s", str().c_str());
         }
+        if (!_data->methodPointer) {
+            BNM_LOG_ERR("Method::Call no code: %s", str().c_str());
+            return PRIVATE_INTERNAL::ReturnEmpty<Ret>();
+        }
         if (!_isStatic && !Utils::IsAllocated(_instance)) {
             BNM_LOG_ERR("Method::Call dead instance: %s", str().c_str());
             return PRIVATE_INTERNAL::ReturnEmpty<Ret>();
         }
         auto method = _data;
-        if (!_isStatic) {
-            return ((Ret(*)(IL2CPP::Il2CppObject *, Parameters...)) method->methodPointer)(_instance, parameters...);
-        }
-        if (_isStatic) {
-            return ((Ret(*)(Parameters...)) method->methodPointer)(parameters...);
-        }
-        return ((Ret(*)(void *, Parameters...)) method->methodPointer)(nullptr, parameters...);
+        if (!_isStatic) return ((Ret(*)(IL2CPP::Il2CppObject *, Parameters...)) method->methodPointer)(_instance, parameters...);
+        return ((Ret(*)(Parameters...)) method->methodPointer)(parameters...);
     }
 
     template<typename ...Parameters>
     inline Ret operator()(Parameters ...parameters) const { return Call(parameters...); }
     template<typename ...Parameters>
     inline IL2CPP::Il2CppObject *CreateNewObjectTypes(const std::initializer_list<std::string_view> &parameterNames, Parameters ...parameters) const {
-        if (!_data) return nullptr;
-        Class(_data->klass).TryInit();
-        auto method = Class(_data->klass).GetMethod(".ctor", parameterNames);
-        auto instance = Class(_data->klass).CreateNewInstance();
+        if (!_data || !_data->klass) return nullptr;
+        auto klass = Class(_data->klass);
+        klass.TryInit();
+        auto method = klass.GetMethod(".ctor", parameterNames);
+        if (!method) return nullptr;
+        auto instance = klass.CreateNewInstance();
         if (!instance) return nullptr;
         method.cast<Method<void>>()[instance](parameters...);
         return instance;
     }
 
     inline Ret Invoke() const {
-        if (!_data) return PRIVATE_INTERNAL::ReturnEmpty<Ret>();
+        if (!_data || !Internal::api.il2cpp_runtime_invoke) return PRIVATE_INTERNAL::ReturnEmpty<Ret>();
         IL2CPP::Il2CppException *exc = nullptr;
         auto ret = Internal::api.il2cpp_runtime_invoke(_data, _instance, nullptr, &exc);
         if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? ((Structures::Mono::String *) exc->message)->str().c_str() : "unknown");
         if constexpr (!std::is_void_v<Ret>) {
             if constexpr (std::is_pointer_v<Ret>) return (Ret) ret;
-            return ret ? *(Ret *) Internal::api.il2cpp_object_unbox((IL2CPP::Il2CppObject *) ret) : Ret{};
+            else {
+                if (!ret || !Internal::api.il2cpp_object_unbox) return Ret{};
+                auto unboxed = Internal::api.il2cpp_object_unbox((IL2CPP::Il2CppObject *) ret);
+                return unboxed ? *(Ret *) unboxed : Ret{};
+            }
         }
     }
 
     template<typename ...Parameters>
     inline Ret Invoke(Parameters ...parameters) const {
-        if (!_data) return PRIVATE_INTERNAL::ReturnEmpty<Ret>();
-        IL2CPP::Il2CppObject *boxed[sizeof...(Parameters) > 0 ? sizeof...(Parameters) : 1];
+        if (!_data || !Internal::api.il2cpp_runtime_invoke) return PRIVATE_INTERNAL::ReturnEmpty<Ret>();
+        IL2CPP::Il2CppObject *boxed[sizeof...(Parameters) > 0 ? sizeof...(Parameters) : 1]{};
         size_t idx = 0;
         ((boxed[idx] = BoxInvokeArg(_data, idx, parameters), ++idx), ...);
         IL2CPP::Il2CppException *exc = nullptr;
@@ -114,7 +119,11 @@ struct Method : public MethodBase {
         if (exc) BNM_LOG_ERR("Method::Invoke exception: %s", exc->message ? ((Structures::Mono::String *) exc->message)->str().c_str() : "unknown");
         if constexpr (!std::is_void_v<Ret>) {
             if constexpr (std::is_pointer_v<Ret>) return (Ret) ret;
-            return ret ? *(Ret *) Internal::api.il2cpp_object_unbox((IL2CPP::Il2CppObject *) ret) : Ret{};
+            else {
+                if (!ret || !Internal::api.il2cpp_object_unbox) return Ret{};
+                auto unboxed = Internal::api.il2cpp_object_unbox((IL2CPP::Il2CppObject *) ret);
+                return unboxed ? *(Ret *) unboxed : Ret{};
+            }
         }
     }
 
@@ -124,10 +133,12 @@ private:
         if constexpr (std::is_pointer_v<T>) {
             return (IL2CPP::Il2CppObject *) value;
         } else {
+            if (!Internal::api.il2cpp_method_get_param || !Internal::api.il2cpp_class_from_il2cpp_type || !Internal::api.il2cpp_value_box) return nullptr;
             auto type = Internal::api.il2cpp_method_get_param(method, (uint32_t) index);
             auto cls = type ? Internal::api.il2cpp_class_from_il2cpp_type(type) : nullptr;
-            if (!cls || !Internal::api.il2cpp_value_box) return nullptr;
+            if (!cls) return nullptr;
             unsigned long long storage = 0;
+            static_assert(sizeof(T) <= sizeof(storage), "Invoke() cannot box a value this large");
             memcpy(&storage, &value, sizeof(T));
             return Internal::api.il2cpp_value_box(cls, &storage);
         }

@@ -5,14 +5,16 @@ using namespace BNM;
 Image::Image(const std::string_view &name) {
     _data = Internal::TryGetImage(name);
 
-    BNM_LOG_WARN_IF(!_data, "Image not found: %s", name.data());
+    BNM_LOG_WARN_IF(!_data, "Image not found: %s", std::string(name).c_str());
 }
 
 Image::Image(const BNM::IL2CPP::Il2CppAssembly *assembly) {
+    if (!assembly) return;
     _data = Internal::api.il2cpp_assembly_get_image((IL2CPP::Il2CppAssembly *) assembly);
 }
 
 std::vector<BNM::Class> Image::GetClasses(bool includeInner) const {
+    if (!_data) return {};
     auto &api = Internal::api;
     std::vector<IL2CPP::Il2CppClass *> classes{};
 

@@ -9,41 +9,128 @@ bool Loading::TryLoadByJNI(JNIEnv *env, jobject context) {
 
     if (!env || Internal::il2cppLibraryHandle || Internal::states.state) return result;
 
+    auto clearException = [env]() -> bool {
+        if (!env->ExceptionCheck()) return false;
+        env->ExceptionClear();
+        return true;
+    };
+
+    jobject localContext = nullptr;
     if (context == nullptr) {
         jclass activityThread = env->FindClass(BNM_OBFUSCATE_TMP("android/app/ActivityThread"));
-        auto currentActivityThread = env->CallStaticObjectMethod(activityThread, env->GetStaticMethodID(activityThread, BNM_OBFUSCATE_TMP("currentActivityThread"), BNM_OBFUSCATE_TMP("()Landroid/app/ActivityThread;")));
-        context = env->CallObjectMethod(currentActivityThread, env->GetMethodID(activityThread, BNM_OBFUSCATE_TMP("getApplication"), BNM_OBFUSCATE_TMP("()Landroid/app/Application;")));
+        if (clearException() || !activityThread) {
+            BNM_LOG_ERR("TryLoadByJNI: ActivityThread not found");
+            return false;
+        }
+        auto currentMethod = env->GetStaticMethodID(activityThread, BNM_OBFUSCATE_TMP("currentActivityThread"), BNM_OBFUSCATE_TMP("()Landroid/app/ActivityThread;"));
+        auto getApplicationMethod = env->GetMethodID(activityThread, BNM_OBFUSCATE_TMP("getApplication"), BNM_OBFUSCATE_TMP("()Landroid/app/Application;"));
+        if (clearException() || !currentMethod || !getApplicationMethod) {
+            BNM_LOG_ERR("TryLoadByJNI: ActivityThread methods not found");
+            env->DeleteLocalRef(activityThread);
+            return false;
+        }
+        auto currentActivityThread = env->CallStaticObjectMethod(activityThread, currentMethod);
+        env->DeleteLocalRef(activityThread);
+        if (clearException() || !currentActivityThread) {
+            BNM_LOG_ERR("TryLoadByJNI: no current ActivityThread");
+            if (currentActivityThread) env->DeleteLocalRef(currentActivityThread);
+            return false;
+        }
+        localContext = env->CallObjectMethod(currentActivityThread, getApplicationMethod);
         env->DeleteLocalRef(currentActivityThread);
+        if (clearException() || !localContext) {
+            BNM_LOG_ERR("TryLoadByJNI: no Application context");
+            if (localContext) env->DeleteLocalRef(localContext);
+            return false;
+        }
+        context = localContext;
     }
 
-    auto applicationInfo = env->CallObjectMethod(context, env->GetMethodID(env->GetObjectClass(context), BNM_OBFUSCATE_TMP("getApplicationInfo"), BNM_OBFUSCATE_TMP("()Landroid/content/pm/ApplicationInfo;")));
-    auto applicationInfoClass = env->GetObjectClass(applicationInfo);
+    struct _LocalRefGuard {
+        JNIEnv *env;
+        jobject ref;
+        ~_LocalRefGuard() { if (ref) env->DeleteLocalRef(ref); }
+    } _contextGuard{env, localContext};
 
-    auto flags = env->GetIntField(applicationInfo, env->GetFieldID(applicationInfoClass, BNM_OBFUSCATE_TMP("flags"), BNM_OBFUSCATE_TMP("I")));
+    auto contextClass = env->GetObjectClass(context);
+    auto getApplicationInfo = contextClass ? env->GetMethodID(contextClass, BNM_OBFUSCATE_TMP("getApplicationInfo"), BNM_OBFUSCATE_TMP("()Landroid/content/pm/ApplicationInfo;")) : nullptr;
+    if (contextClass) env->DeleteLocalRef(contextClass);
+    if (clearException() || !getApplicationInfo) {
+        BNM_LOG_ERR("TryLoadByJNI: getApplicationInfo not found");
+        return false;
+    }
+
+    auto applicationInfo = env->CallObjectMethod(context, getApplicationInfo);
+    if (clearException() || !applicationInfo) {
+        BNM_LOG_ERR("TryLoadByJNI: no ApplicationInfo");
+        if (applicationInfo) env->DeleteLocalRef(applicationInfo);
+        return false;
+    }
+    auto applicationInfoClass = env->GetObjectClass(applicationInfo);
+    if (clearException() || !applicationInfoClass) {
+        BNM_LOG_ERR("TryLoadByJNI: no ApplicationInfo class");
+        env->DeleteLocalRef(applicationInfo);
+        if (applicationInfoClass) env->DeleteLocalRef(applicationInfoClass);
+        return false;
+    }
+
+    auto flagsField = env->GetFieldID(applicationInfoClass, BNM_OBFUSCATE_TMP("flags"), BNM_OBFUSCATE_TMP("I"));
+    if (clearException() || !flagsField) {
+        BNM_LOG_ERR("TryLoadByJNI: ApplicationInfo.flags not found");
+        env->DeleteLocalRef(applicationInfoClass);
+        env->DeleteLocalRef(applicationInfo);
+        return false;
+    }
+    auto flags = env->GetIntField(applicationInfo, flagsField);
     bool isLibrariesExtracted = (flags & 0x10000000) == 0x10000000;
 
-    auto jDir = (jstring) env->GetObjectField(applicationInfo, env->GetFieldID(applicationInfoClass, isLibrariesExtracted ? BNM_OBFUSCATE_TMP("nativeLibraryDir") : BNM_OBFUSCATE_TMP("sourceDir"), BNM_OBFUSCATE_TMP("Ljava/lang/String;")));
-
-    auto cDir = std::string_view(env->GetStringUTFChars(jDir, nullptr));
-    env->DeleteLocalRef(applicationInfo);
+    auto dirField = env->GetFieldID(applicationInfoClass, isLibrariesExtracted ? BNM_OBFUSCATE_TMP("nativeLibraryDir") : BNM_OBFUSCATE_TMP("sourceDir"), BNM_OBFUSCATE_TMP("Ljava/lang/String;"));
+    if (clearException() || !dirField) {
+        BNM_LOG_ERR("TryLoadByJNI: ApplicationInfo dir field not found");
+        env->DeleteLocalRef(applicationInfoClass);
+        env->DeleteLocalRef(applicationInfo);
+        return false;
+    }
+    auto jDir = (jstring) env->GetObjectField(applicationInfo, dirField);
     env->DeleteLocalRef(applicationInfoClass);
+    env->DeleteLocalRef(applicationInfo);
+    if (clearException() || !jDir) {
+        BNM_LOG_ERR("TryLoadByJNI: no library dir");
+        if (jDir) env->DeleteLocalRef(jDir);
+        return false;
+    }
+
+    auto rawDir = env->GetStringUTFChars(jDir, nullptr);
+    if (clearException() || !rawDir) {
+        BNM_LOG_ERR("TryLoadByJNI: GetStringUTFChars failed");
+        env->DeleteLocalRef(jDir);
+        return false;
+    }
+    auto cDir = std::string_view(rawDir);
 
     std::string file = std::string(cDir) + (isLibrariesExtracted ? BNM_OBFUSCATE_TMP("/libil2cpp.so") : BNM_OBFUSCATE_TMP("!/lib/" CURRENT_ARCH "/libil2cpp.so"));
     auto splitBase = cDir.length() >= 8 ? cDir.substr(0, cDir.length() - 8) : cDir;
 
     auto handle = BNM_dlopen(file.c_str(), RTLD_LAZY);
-    if (!(result = CheckHandle(handle))) {
-        BNM_LOG_ERR("TryLoadByJNI failed for %s", file.c_str());
-    } else goto FINISH;
-    if (isLibrariesExtracted) goto FINISH;
-    file.clear();
+    if (handle) {
+        if (!(result = CheckHandle(handle))) {
+            BNM_LOG_ERR("TryLoadByJNI failed for %s", file.c_str());
+            BNM_dlclose(handle);
+        }
+    } else BNM_LOG_ERR("TryLoadByJNI dlopen failed for %s", file.c_str());
 
-    file = std::string(splitBase) + BNM_OBFUSCATE_TMP("split_config." CURRENT_ARCH ".apk!/lib/" CURRENT_ARCH "/libil2cpp.so");
-    handle = BNM_dlopen(file.c_str(), RTLD_LAZY);
-    if (!(result = CheckHandle(handle))) BNM_LOG_ERR("TryLoadByJNI split failed for %s", file.c_str());
+    if (!result && !isLibrariesExtracted) {
+        file = std::string(splitBase) + BNM_OBFUSCATE_TMP("split_config." CURRENT_ARCH ".apk!/lib/" CURRENT_ARCH "/libil2cpp.so");
+        handle = BNM_dlopen(file.c_str(), RTLD_LAZY);
+        if (handle) {
+            if (!(result = CheckHandle(handle))) {
+                BNM_LOG_ERR("TryLoadByJNI split failed for %s", file.c_str());
+                BNM_dlclose(handle);
+            }
+        } else BNM_LOG_ERR("TryLoadByJNI split dlopen failed for %s", file.c_str());
+    }
 
-    FINISH:
-    env->ReleaseStringUTFChars(jDir, cDir.data());
+    env->ReleaseStringUTFChars(jDir, rawDir);
     env->DeleteLocalRef(jDir);
     return result;
 }
@@ -95,7 +182,7 @@ const char *Internal::GetExceptionTypeName() {
     return type ? type->name() : "unknown";
 }
 
-void Internal::SetupBNM() {
+bool Internal::SetupBNM() {
     auto &api = BNM::Internal::api;
 
     Internal::ResolveApi();
@@ -109,39 +196,50 @@ void Internal::SetupBNM() {
     if (api.il2cpp_array_new_specific) {
         auto arrayNew = (BNM_PTR) api.il2cpp_array_new_specific;
         auto first = FindNextJump(arrayNew, count);
-        auto init = FindNextJump(first, count); (void) init;
-        classInitFunc = (void (*)(IL2CPP::Il2CppClass *)) init;
-        BNM_LOG_DEBUG("Class::Init resolved at %p", OffsetInLib((void *) init));
+        auto init = first ? FindNextJump(first, count) : 0;
+        if (init) {
+            classInitFunc = (void (*)(IL2CPP::Il2CppClass *)) init;
+            BNM_LOG_DEBUG("Class::Init resolved at %p", OffsetInLib((void *) init));
+        } else BNM_LOG_WARN("Class::Init not resolved");
     }
 
     if (api.il2cpp_class_from_type) {
         auto from_type_adr = FindJump((void *) api.il2cpp_class_from_type, count);
-        ::BasicHook(from_type_adr, (void *) ClassesManagement::Class$$FromIl2CppType, ClassesManagement::old_Class$$FromIl2CppType);
-        BNM_LOG_DEBUG("vm::Class::FromIl2CppType hooked at %p", OffsetInLib(from_type_adr));
+        if (from_type_adr) {
+            ::BasicHook(from_type_adr, (void *) ClassesManagement::Class$$FromIl2CppType, ClassesManagement::old_Class$$FromIl2CppType);
+            BNM_LOG_DEBUG("vm::Class::FromIl2CppType hooked at %p", OffsetInLib(from_type_adr));
+        }
     }
 
     if (api.il2cpp_type_get_class_or_element_class) {
         auto type_get_class_adr = FindJump((void *) api.il2cpp_type_get_class_or_element_class, count);
-        ::BasicHook(type_get_class_adr, (void *) ClassesManagement::Type$$GetClassOrElementClass, ClassesManagement::old_Type$$GetClassOrElementClass);
-        BNM_LOG_DEBUG("vm::Type::GetClassOrElementClass hooked at %p", OffsetInLib(type_get_class_adr));
+        if (type_get_class_adr) {
+            ::BasicHook(type_get_class_adr, (void *) ClassesManagement::Type$$GetClassOrElementClass, ClassesManagement::old_Type$$GetClassOrElementClass);
+            BNM_LOG_DEBUG("vm::Type::GetClassOrElementClass hooked at %p", OffsetInLib(type_get_class_adr));
+        }
     }
 
     if (api.il2cpp_class_from_name) {
-        auto from_name_adr = FindJump(FindJump((void *) api.il2cpp_class_from_name, count), count);
-        ::BasicHook(from_name_adr, (void *) ClassesManagement::Class$$FromName, ClassesManagement::old_Class$$FromName);
-        BNM_LOG_DEBUG("vm::Image::ClassFromName hooked at %p", OffsetInLib(from_name_adr));
+        auto first = FindJump((void *) api.il2cpp_class_from_name, count);
+        auto from_name_adr = first ? FindJump(first, count) : nullptr;
+        if (from_name_adr) {
+            ::BasicHook(from_name_adr, (void *) ClassesManagement::Class$$FromName, ClassesManagement::old_Class$$FromName);
+            BNM_LOG_DEBUG("vm::Image::ClassFromName hooked at %p", OffsetInLib(from_name_adr));
+        }
     }
 
     if (api.il2cpp_image_get_types) {
         auto get_types_adr = FindJump((void *) api.il2cpp_image_get_types, count);
-        ::BasicHook(get_types_adr, (void *) Internal::Image$$GetTypes, Internal::orig_Image$$GetTypes);
-        BNM_LOG_DEBUG("vm::Image::GetTypes hooked at %p", OffsetInLib(get_types_adr));
+        if (get_types_adr) {
+            ::BasicHook(get_types_adr, (void *) Internal::Image$$GetTypes, Internal::orig_Image$$GetTypes);
+            BNM_LOG_DEBUG("vm::Image::GetTypes hooked at %p", OffsetInLib(get_types_adr));
+        }
     }
 
     auto corlib = api.il2cpp_get_corlib ? api.il2cpp_get_corlib() : nullptr;
     if (!corlib) {
         BNM_LOG_ERR("SetupBNM failed: no corlib");
-        return;
+        return false;
     }
 
     auto runtimeMethodInfoClass = TryGetClassInImage(corlib, "System.Reflection", "RuntimeMethodInfo");
@@ -158,6 +256,11 @@ void Internal::SetupBNM() {
     auto interlockedClass = Class("System.Threading", "Interlocked", corlib);
     auto objectClass = Class("System", "Object", corlib);
 
+    if (!objectClass) {
+        BNM_LOG_ERR("SetupBNM failed: System.Object not found");
+        return false;
+    }
+
     vmData.Object = objectClass;
     vmData.RuntimeType$$MakeGenericType = runtimeTypeClass.GetMethod("MakeGenericType", 2);
     vmData.RuntimeType$$MakePointerType = runtimeTypeClass.GetMethod("MakePointerType", 1);
@@ -170,7 +273,7 @@ void Internal::SetupBNM() {
     auto objectMethods = objectClass.GetMethods(false);
     for (auto &m : objectMethods) {
         auto info = m.GetInfo();
-        if (info->name && strcmp(info->name, "Finalize") == 0) {
+        if (info && info->name && strcmp(info->name, "Finalize") == 0) {
             finalizerSlot = info->slot;
             break;
         }
@@ -186,18 +289,19 @@ void Internal::SetupBNM() {
         auto newListClass = (IL2CPP::Il2CppClass *) BNM_malloc(size);
         memcpy(newListClass, cls, size);
         newListClass->has_finalize = 0;
-        newListClass->instance_size = sizeof(Structures::Mono::List<void *>);
+        newListClass->instance_size = newListClass->actualSize = sizeof(Structures::Mono::List<void *>);
         newListClass->has_cctor = 0;
         newListClass->cctor_started = 0;
         newListClass->cctor_finished_or_no_cctor = 1;
         auto ctor = listClass.GetMethod(constructorName, 0);
-        if (ctor) {
+        if (ctor && newListClass->methods && newListClass->method_count) {
             auto constructor = ctor.GetInfo();
             auto newMethods = (IL2CPP::MethodInfo **) BNM_malloc(sizeof(IL2CPP::MethodInfo *) * newListClass->method_count);
             memcpy(newMethods, newListClass->methods, sizeof(IL2CPP::MethodInfo *) * newListClass->method_count);
             auto newConstructor = (IL2CPP::MethodInfo *) BNM_malloc(sizeof(IL2CPP::MethodInfo));
             *newConstructor = *constructor;
             newConstructor->methodPointer = (decltype(newConstructor->methodPointer)) EmptyMethod;
+            newConstructor->virtualMethodPointer = (decltype(newConstructor->virtualMethodPointer)) EmptyMethod;
             newConstructor->invoker_method = (decltype(newConstructor->invoker_method)) EmptyMethod;
             for (uint16_t i = 0; i < newListClass->method_count; ++i) {
                 if (newListClass->methods[i] == constructor) newMethods[i] = newConstructor;
@@ -209,13 +313,14 @@ void Internal::SetupBNM() {
     }
 
     BNM_LOG_DEBUG("SetupBNM done");
+    return true;
 }
 
 int Internal::BNM_il2cpp_init(const char *domain_name) {
 
     if (states.lateInitAllowed) Unhook(BNM_Class$$FromIl2CppType_origin);
 
-    auto ret = old_BNM_il2cpp_init(domain_name);
+    auto ret = old_BNM_il2cpp_init ? old_BNM_il2cpp_init(domain_name) : 0;
 
     Unhook(BNM_il2cpp_init_origin);
 
@@ -231,7 +336,7 @@ int Internal::BNM_il2cpp_init(const char *domain_name) {
 IL2CPP::Il2CppClass *Internal::BNM_Class$$FromIl2CppType(IL2CPP::Il2CppReflectionType *type) {
     auto &api = BNM::Internal::api;
 
-    auto klass = old_BNM_Class$$FromIl2CppType(type);
+    auto klass = old_BNM_Class$$FromIl2CppType ? old_BNM_Class$$FromIl2CppType(type) : nullptr;
 
     if (states.state) return klass;
 
@@ -239,6 +344,8 @@ IL2CPP::Il2CppClass *Internal::BNM_Class$$FromIl2CppType(IL2CPP::Il2CppReflectio
         api.il2cpp_domain_get = (decltype(api.il2cpp_domain_get)) GetIl2CppMethod(BNM_OBFUSCATE_TMP("il2cpp_domain_get"));
         api.il2cpp_thread_current = (decltype(api.il2cpp_thread_current)) GetIl2CppMethod(BNM_OBFUSCATE_TMP("il2cpp_thread_current"));
     }
+
+    if (!api.il2cpp_domain_get || !api.il2cpp_thread_current) return klass;
 
     auto domain = api.il2cpp_domain_get();
     auto thread = api.il2cpp_thread_current();
@@ -258,7 +365,13 @@ IL2CPP::Il2CppClass *Internal::BNM_Class$$FromIl2CppType(IL2CPP::Il2CppReflectio
 }
 
 void Internal::Load() {
-    SetupBNM();
+    static std::atomic_flag loadStarted = ATOMIC_FLAG_INIT;
+    if (loadStarted.test_and_set(std::memory_order_acq_rel)) return;
+
+    if (!SetupBNM()) {
+        BNM_LOG_ERR("Load aborted: SetupBNM failed");
+        return;
+    }
     BNM_LOG_DEBUG("Load stage: SetupBNM ok");
 
     LoadDefaults();
@@ -330,44 +443,57 @@ IL2CPP::Il2CppClass *Internal::TryGetClassInImage(const IL2CPP::Il2CppImage *ima
 }
 
 Class Internal::TryMakeGenericClass(Class genericType, const std::vector<CompileTimeClass> &templateTypes) {
-    if (!vmData.RuntimeType$$MakeGenericType.IsValid()) return {};
+    if (!vmData.RuntimeType$$MakeGenericType.IsValid() || !genericType) return {};
     auto monoType = genericType.GetMonoType();
+    if (!monoType) return {};
+
     auto monoGenericsList = Structures::Mono::Array<MonoType *>::Create(templateTypes.size(), true);
+    if (!monoGenericsList) {
+        BNM_LOG_ERR("TryMakeGenericClass failed: cannot allocate Type[]");
+        return {};
+    }
     for (IL2CPP::il2cpp_array_size_t i = 0; i < (IL2CPP::il2cpp_array_size_t) templateTypes.size(); ++i)
         (*monoGenericsList)[i] = templateTypes[i].ToClass().GetMonoType();
 
     using MakeGenericTypeFn = MonoType *(*)(MonoType *, Structures::Mono::Array<MonoType *> *);
     Class typedGenericType = ((MakeGenericTypeFn) vmData.RuntimeType$$MakeGenericType.GetOffset())(monoType, monoGenericsList);
 
-    monoGenericsList->Destroy();
-
     return typedGenericType;
 }
 
 MethodBase Internal::TryMakeGenericMethod(const MethodBase &genericMethod, const std::vector<CompileTimeClass> &templateTypes) {
-    if (!vmData.RuntimeMethodInfo$$MakeGenericMethod_impl.IsValid() || !genericMethod.GetInfo()->is_generic) return {};
-    IL2CPP::Il2CppReflectionMethod reflectionMethod;
-    reflectionMethod.method = genericMethod.GetInfo();
+    if (!vmData.RuntimeMethodInfo$$MakeGenericMethod_impl.IsValid() || !genericMethod.GetInfo() || !genericMethod.GetInfo()->is_generic) return {};
 
     auto monoGenericsList = Structures::Mono::Array<MonoType *>::Create(templateTypes.size(), true);
+    if (!monoGenericsList) {
+        BNM_LOG_ERR("TryMakeGenericMethod failed: cannot allocate Type[]");
+        return {};
+    }
     for (IL2CPP::il2cpp_array_size_t i = 0; i < (IL2CPP::il2cpp_array_size_t) templateTypes.size(); ++i) (*monoGenericsList)[i] = templateTypes[i].ToClass().GetMonoType();
+
+    IL2CPP::Il2CppReflectionMethod reflectionMethod;
+    memset(&reflectionMethod, 0, sizeof(reflectionMethod));
+    reflectionMethod.method = genericMethod.GetInfo();
+    reflectionMethod.object.klass = vmData.RuntimeMethodInfo$$MakeGenericMethod_impl.GetParentClass()._data;
 
     using MakeGenericMethodFn = IL2CPP::Il2CppReflectionMethod *(*)(IL2CPP::Il2CppReflectionMethod *, Structures::Mono::Array<MonoType *> *);
     auto typedGenericMethod = ((MakeGenericMethodFn) vmData.RuntimeMethodInfo$$MakeGenericMethod_impl.GetOffset())(&reflectionMethod, monoGenericsList);
-
-    monoGenericsList->Destroy();
 
     return typedGenericMethod ? MethodBase(typedGenericMethod->method) : MethodBase{};
 }
 
 Class Internal::GetPointer(Class target) {
-    if (!vmData.RuntimeType$$MakePointerType.IsValid()) return {};
+    if (!vmData.RuntimeType$$MakePointerType.IsValid() || !target) return {};
+    auto monoType = target.GetMonoType();
+    if (!monoType) return {};
     using MakePointerTypeFn = MonoType *(*)(MonoType *);
-    return ((MakePointerTypeFn) vmData.RuntimeType$$MakePointerType.GetOffset())(target.GetMonoType());
+    return ((MakePointerTypeFn) vmData.RuntimeType$$MakePointerType.GetOffset())(monoType);
 }
 
 Class Internal::GetReference(Class target) {
-    if (!vmData.RuntimeType$$make_byref_type.IsValid()) return {};
+    if (!vmData.RuntimeType$$make_byref_type.IsValid() || !target) return {};
+    auto monoType = target.GetMonoType();
+    if (!monoType) return {};
     using MakeByrefFn = MonoType *(*)(void *);
-    return ((MakeByrefFn) vmData.RuntimeType$$make_byref_type.GetOffset())(target.GetMonoType());
+    return ((MakeByrefFn) vmData.RuntimeType$$make_byref_type.GetOffset())(monoType);
 }

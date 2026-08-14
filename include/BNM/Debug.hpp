@@ -1,6 +1,4 @@
 #pragma once
-
-#pragma once
 #if __cplusplus < 202002L
 #error "BNM-Free requires C++20 and above!"
 #endif
@@ -16,6 +14,10 @@
 #include <string_view>
 #include <vector>
 #include <map>
+#include <array>
+#include <atomic>
+#include <memory>
+#include <algorithm>
 #include <utility>
 #include <functional>
 #include <type_traits>

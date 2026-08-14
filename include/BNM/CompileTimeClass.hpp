@@ -9,6 +9,7 @@ struct CompileTimeClass {
     struct _BaseInfo {
         _BaseType _baseType{};
         inline constexpr _BaseInfo(_BaseType type) : _baseType(type) {}
+        inline virtual ~_BaseInfo() = default;
     };
 
     struct _ClassInfo : _BaseInfo {
@@ -34,40 +35,41 @@ struct CompileTimeClass {
     };
 
     Class _loadedClass{};
-    std::vector<_BaseInfo *> _stack{};
+    std::vector<std::shared_ptr<_BaseInfo>> _stack{};
     Class *_reference{};
     uint8_t _autoFree : 1 = false;
 
     inline CompileTimeClass() = default;
     inline CompileTimeClass(Class *_ref) : _reference(_ref) { _autoFree = true; }
     inline CompileTimeClass(const CompileTimeClass &other) = default;
+    inline CompileTimeClass &operator=(const CompileTimeClass &other) = default;
     inline ~CompileTimeClass() { if (_autoFree) Free(); }
 
     inline void AddClass(const char *_namespace, const char *name, const char *imageName = nullptr) {
-        auto info = new _ClassInfo();
+        auto info = std::make_shared<_ClassInfo>();
         info->_namespace = _namespace;
         info->_name = name;
         info->_imageName = imageName;
-        _stack.push_back(info);
+        _stack.push_back(std::move(info));
     }
     inline void AddInnerClass(const char *name) {
-        auto info = new _InnerInfo();
+        auto info = std::make_shared<_InnerInfo>();
         info->_name = name;
-        _stack.push_back(info);
+        _stack.push_back(std::move(info));
     }
     inline void AddModifier(ModifierType type) {
-        auto info = new _ModifierInfo();
+        auto info = std::make_shared<_ModifierInfo>();
         info->_modifierType = type;
-        _stack.push_back(info);
+        _stack.push_back(std::move(info));
     }
     inline void AddGeneric(const std::vector<CompileTimeClass> &types) {
-        auto info = new _GenericInfo();
+        auto info = std::make_shared<_GenericInfo>();
         info->_types = types;
-        _stack.push_back(info);
+        _stack.push_back(std::move(info));
     }
 
     Class ToClass();
-    inline Class ToClass() const { return ((CompileTimeClass *) this)->ToClass(); }
+    inline Class ToClass() const { return CompileTimeClass(*this).ToClass(); }
     inline operator Class() const { return ToClass(); }
     inline IL2CPP::Il2CppType *ToIl2CppType() const { return ToClass().GetIl2CppType(); }
     inline operator IL2CPP::Il2CppType *() const { return ToIl2CppType(); }
@@ -76,8 +78,8 @@ struct CompileTimeClass {
     inline BNM::MethodBase operator[](const std::string_view &name) const { return ToClass().GetMethod(name); }
     inline BNM::FieldBase operator[](const char *name) const { return ToClass().GetField(name); }
     inline void Free() {
-        for (auto info : _stack) delete info;
         _stack.clear();
+        _stack.shrink_to_fit();
         _autoFree = false;
     }
 };

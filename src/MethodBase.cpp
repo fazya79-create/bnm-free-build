@@ -47,10 +47,11 @@ MethodBase MethodBase::GetOverride() const {
     }
 
     auto klass = _instance->klass;
+    if (!klass) return {};
     void *iter = nullptr;
     while (auto method = Internal::api.il2cpp_class_get_methods(klass, &iter)) {
         auto vMethod = (IL2CPP::MethodInfo *) method;
-        if (strcmp(vMethod->name, _data->name) != 0 || vMethod->parameters_count != _data->parameters_count) continue;
+        if (strcmp(vMethod->name ? vMethod->name : "", _data->name ? _data->name : "") != 0 || vMethod->parameters_count != _data->parameters_count) continue;
         bool match = true;
         for (uint8_t p = 0; p < vMethod->parameters_count; ++p) {
             auto type = Internal::api.il2cpp_method_get_param(vMethod, p);
@@ -101,7 +102,7 @@ bool BNM::VirtualHookImpl(Class targetClass, IL2CPP::MethodInfo *info, void *new
     if (!info || !targetClass) return false;
 
     auto klass = targetClass._data;
-    if (!klass || info->slot >= klass->vtable_count) return false;
+    if (!klass || info->slot == 65535 || info->slot >= klass->vtable_count) return false;
 
     auto &vTable = klass->vtable[info->slot];
     if (vTable.method == nullptr) return false;

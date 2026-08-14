@@ -46,63 +46,110 @@ struct CustomClass {
 template<bool IsStatic, typename MET>
 struct GetMethodInvoker;
 
+namespace PRIVATE_INVOKER {
+    template<typename PMF>
+    inline PMF RestorePointerToMember(IL2CPP::Il2CppMethodPointer ptr) {
+        PMF fn{};
+        static_assert(sizeof(PMF) >= sizeof(ptr), "unexpected pointer-to-member layout");
+        memcpy((void *) &fn, (const void *) &ptr, sizeof(ptr));
+        return fn;
+    }
+
+    // il2cpp passes arguments as an array of pointers to the values.
+    template<typename T>
+    inline T ReadArg(void **params, size_t index) {
+        if constexpr (std::is_pointer_v<T>) return (T) params[index];
+        else return *(std::remove_cv_t<std::remove_reference_t<T>> *) params[index];
+    }
+}
+
 template<typename Ret, typename CLS, typename ...Args>
 struct GetMethodInvoker<false, Ret (CLS::*)(Args...)> {
+    template<size_t ...I>
+    static void InvokeImpl(IL2CPP::Il2CppMethodPointer ptr, void *obj, [[maybe_unused]] void **params, std::index_sequence<I...>) {
+        auto fn = PRIVATE_INVOKER::RestorePointerToMember<Ret (CLS::*)(Args...)>(ptr);
+        ((CLS *) obj->*fn)(PRIVATE_INVOKER::ReadArg<Args>(params, I)...);
+    }
     static void Invoke(IL2CPP::Il2CppMethodPointer ptr, const IL2CPP::MethodInfo *, void *obj, void **params, void *) {
-        Ret (CLS::*fn)(Args...) = nullptr;
-        memcpy(&fn, &ptr, sizeof(fn));
-        if constexpr (std::is_void_v<Ret>) ((CLS *) obj->*fn)((Args) *params...);
-        else ((CLS *) obj->*fn)((Args) *params...);
+        InvokeImpl(ptr, obj, params, std::index_sequence_for<Args...>{});
     }
 };
 
 template<typename Ret, typename CLS, typename ...Args>
 struct GetMethodInvoker<false, Ret (CLS::*)(Args...) const> {
+    template<size_t ...I>
+    static void InvokeImpl(IL2CPP::Il2CppMethodPointer ptr, void *obj, [[maybe_unused]] void **params, std::index_sequence<I...>) {
+        auto fn = PRIVATE_INVOKER::RestorePointerToMember<Ret (CLS::*)(Args...) const>(ptr);
+        ((const CLS *) obj->*fn)(PRIVATE_INVOKER::ReadArg<Args>(params, I)...);
+    }
     static void Invoke(IL2CPP::Il2CppMethodPointer ptr, const IL2CPP::MethodInfo *, void *obj, void **params, void *) {
-        Ret (CLS::*fn)(Args...) const = nullptr;
-        memcpy(&fn, &ptr, sizeof(fn));
-        if constexpr (std::is_void_v<Ret>) ((CLS *) obj->*fn)((Args) *params...);
-        else ((CLS *) obj->*fn)((Args) *params...);
+        InvokeImpl(ptr, obj, params, std::index_sequence_for<Args...>{});
     }
 };
 
 template<typename Ret, typename CLS, typename ...Args>
 struct GetMethodInvoker<true, Ret (CLS::*)(Args...)> {
+    template<size_t ...I>
+    static void InvokeImpl(IL2CPP::Il2CppMethodPointer ptr, [[maybe_unused]] void **params, std::index_sequence<I...>) {
+        ((Ret (*)(Args...)) ptr)(PRIVATE_INVOKER::ReadArg<Args>(params, I)...);
+    }
     static void Invoke(IL2CPP::Il2CppMethodPointer ptr, const IL2CPP::MethodInfo *, void *, void **params, void *) {
-        if constexpr (std::is_void_v<Ret>) ((Ret (*)(Args...)) ptr)((Args) *params...);
-        else ((Ret (*)(Args...)) ptr)((Args) *params...);
+        InvokeImpl(ptr, params, std::index_sequence_for<Args...>{});
+    }
+};
+
+template<typename Ret, typename CLS, typename ...Args>
+struct GetMethodInvoker<true, Ret (CLS::*)(Args...) const> {
+    template<size_t ...I>
+    static void InvokeImpl(IL2CPP::Il2CppMethodPointer ptr, [[maybe_unused]] void **params, std::index_sequence<I...>) {
+        ((Ret (*)(Args...)) ptr)(PRIVATE_INVOKER::ReadArg<Args>(params, I)...);
+    }
+    static void Invoke(IL2CPP::Il2CppMethodPointer ptr, const IL2CPP::MethodInfo *, void *, void **params, void *) {
+        InvokeImpl(ptr, params, std::index_sequence_for<Args...>{});
     }
 };
 
 template<typename Ret, typename ...Args>
 struct GetMethodInvoker<false, Ret (*)(Args...)> {
+    template<size_t ...I>
+    static void InvokeImpl(IL2CPP::Il2CppMethodPointer ptr, [[maybe_unused]] void **params, std::index_sequence<I...>) {
+        ((Ret (*)(Args...)) ptr)(PRIVATE_INVOKER::ReadArg<Args>(params, I)...);
+    }
     static void Invoke(IL2CPP::Il2CppMethodPointer ptr, const IL2CPP::MethodInfo *, void *, void **params, void *) {
-        if constexpr (std::is_void_v<Ret>) ((Ret (*)(Args...)) ptr)((Args) *params...);
-        else ((Ret (*)(Args...)) ptr)((Args) *params...);
+        InvokeImpl(ptr, params, std::index_sequence_for<Args...>{});
     }
 };
 
 template<typename Ret, typename ...Args>
 struct GetMethodInvoker<true, Ret (*)(Args...)> {
+    template<size_t ...I>
+    static void InvokeImpl(IL2CPP::Il2CppMethodPointer ptr, [[maybe_unused]] void **params, std::index_sequence<I...>) {
+        ((Ret (*)(Args...)) ptr)(PRIVATE_INVOKER::ReadArg<Args>(params, I)...);
+    }
     static void Invoke(IL2CPP::Il2CppMethodPointer ptr, const IL2CPP::MethodInfo *, void *, void **params, void *) {
-        if constexpr (std::is_void_v<Ret>) ((Ret (*)(Args...)) ptr)((Args) *params...);
-        else ((Ret (*)(Args...)) ptr)((Args) *params...);
+        InvokeImpl(ptr, params, std::index_sequence_for<Args...>{});
     }
 };
 
 template<typename Ret, typename ...Args>
 struct GetMethodInvoker<false, Ret(Args...)> {
+    template<size_t ...I>
+    static void InvokeImpl(IL2CPP::Il2CppMethodPointer ptr, void *obj, [[maybe_unused]] void **params, std::index_sequence<I...>) {
+        ((Ret (*)(void *, Args...)) ptr)(obj, PRIVATE_INVOKER::ReadArg<Args>(params, I)...);
+    }
     static void Invoke(IL2CPP::Il2CppMethodPointer ptr, const IL2CPP::MethodInfo *, void *obj, void **params, void *) {
-        if constexpr (std::is_void_v<Ret>) ((Ret (*)(Args...)) ptr)((Args) *params...);
-        else ((Ret (*)(Args...)) ptr)((Args) *params...);
+        InvokeImpl(ptr, obj, params, std::index_sequence_for<Args...>{});
     }
 };
 
 template<typename Ret, typename ...Args>
 struct GetMethodInvoker<true, Ret(Args...)> {
+    template<size_t ...I>
+    static void InvokeImpl(IL2CPP::Il2CppMethodPointer ptr, [[maybe_unused]] void **params, std::index_sequence<I...>) {
+        ((Ret (*)(Args...)) ptr)(PRIVATE_INVOKER::ReadArg<Args>(params, I)...);
+    }
     static void Invoke(IL2CPP::Il2CppMethodPointer ptr, const IL2CPP::MethodInfo *, void *, void **params, void *) {
-        if constexpr (std::is_void_v<Ret>) ((Ret (*)(Args...)) ptr)((Args) *params...);
-        else ((Ret (*)(Args...)) ptr)((Args) *params...);
+        InvokeImpl(ptr, params, std::index_sequence_for<Args...>{});
     }
 };
 

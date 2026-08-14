@@ -53,7 +53,7 @@ struct Vector3Int;
         inline static Vector2 Reflect(Vector2 inDirection, Vector2 inNormal);
         inline static Vector2 Reject(Vector2 a, Vector2 b);
         inline static Vector2 RotateTowards(Vector2 current, Vector2 target, float maxRadiansDelta, float maxMagnitudeDelta);
-        inline void Scale(Vector2 scale) { scale * scale; }
+        inline void Scale(Vector2 scale) { *this = *this * scale; }
         inline static Vector2 Scale(Vector2 a, Vector2 b) { return a * b; }
         inline static Vector2 Slerp(Vector2, Vector2, float);
         inline static Vector2 SlerpUnclamped(Vector2, Vector2, float);
@@ -151,8 +151,9 @@ struct Vector3Int;
     }
 
     Vector2 Vector2::Project(Vector2 a, Vector2 b) {
-        float m = Magnitude(b);
-        return Dot(a, b) / (m * m) * b;
+        float sqrMag = Dot(b, b);
+        if (sqrMag == 0.f) return Vector2::zero;
+        return Dot(a, b) / sqrMag * b;
     }
 
     Vector2 Vector2::Reflect(Vector2 inDirection, Vector2 inNormal) {
@@ -172,9 +173,8 @@ struct Vector3Int;
         float totalAngle = Angle(current, target) - maxRadiansDelta;
         if (totalAngle <= 0) return Normalize(target) * newMag;
         else if (totalAngle >= M_PI) return -Normalize(target) * newMag;
-        float axis = current.x * target.y - current.y * target.x;
-        axis = axis / fabsf(axis);
-        if (1 - fabsf(axis) >= 0.00001) axis = 1;
+        float cross = current.x * target.y - current.y * target.x;
+        float axis = cross == 0.f ? 1.f : cross / fabsf(cross);
         current = Normalize(current);
         Vector2 newVector = current * cosf(maxRadiansDelta) + Vector2(-current.y, current.x) * sinf(maxRadiansDelta) * axis;
         return newVector * newMag;
@@ -189,6 +189,7 @@ struct Vector3Int;
     Vector2 Vector2::SlerpUnclamped(Vector2 a, Vector2 b, float t) {
         float magA = Magnitude(a);
         float magB = Magnitude(b);
+        if (magA == 0.f || magB == 0.f) return Lerp(a, b, t);
         a /= magA;
         b /= magB;
         float dot = Dot(a, b);
@@ -537,6 +538,7 @@ struct Vector3Int;
     Vector3 Vector3::SlerpUnclamped(Vector3 a, Vector3 b, float t) {
         float magA = Magnitude(a);
         float magB = Magnitude(b);
+        if (magA == 0.f || magB == 0.f) return Lerp(a, b, t);
         a /= magA;
         b /= magB;
         float dot = Dot(a, b);
@@ -590,7 +592,11 @@ struct Vector3Int;
 
     struct Vector4;
 
-    inline bool IsFinite(float value) { return (*(uint32_t *) &value & 0x7f800000) != 0x7f800000; }
+    inline bool IsFinite(float value) {
+        uint32_t bits;
+        memcpy(&bits, &value, sizeof(bits));
+        return (bits & 0x7f800000u) != 0x7f800000u;
+    }
 
     struct Vector4 {
         union {
@@ -717,8 +723,7 @@ struct Vector3Int;
         inline Quaternion(float data[]) noexcept : x(data[0]), y(data[1]), z(data[2]), w(data[3]) {}
         inline Quaternion(Vector3 vector, float scalar) noexcept : x(vector.x), y(vector.y), z(vector.z), w(scalar) {};
         inline Quaternion(float x, float y, float z, float w) noexcept : x(x), y(y), z(z), w(w) {};
-        inline Quaternion(float Yaw, float Pitch, float Roll) {
-        };
+        inline Quaternion(float Yaw, float Pitch, float Roll);
 
         inline static Vector3 Up(Quaternion q);
         inline static Vector3 Down(Quaternion q);
@@ -862,6 +867,8 @@ struct Vector3Int;
                 cP * cY * cR + sP * sY * sR};
     }
 
+    inline Quaternion::Quaternion(float Yaw, float Pitch, float Roll) { *this = FromEuler(Yaw, Pitch, Roll); }
+
     Vector3 Quaternion::ToEuler(Quaternion q, bool toDeg) {
         Vector3 rot{};
 
@@ -970,7 +977,9 @@ struct Vector3Int;
     }
 
     Quaternion Quaternion::Normalize(Quaternion rotation) {
-        return rotation / Norm(rotation);
+        float n = Norm(rotation);
+        if (n == 0.f) return Quaternion::identity;
+        return rotation / n;
     }
 
     Quaternion Quaternion::RotateTowards(Quaternion from, Quaternion to, float maxRadiansDelta) {
@@ -1198,7 +1207,11 @@ struct Vector3Int;
                 float uxx, uyy, uzz, uxy, uxz, uyz;
                 float lxx, lyy, lzz, lxy, lxz, lyz;
                 Vector3 left(0.0f, from[2], -from[1]);
-                if (Vector3::Dot(left, left) < kEpsilon) left[0] = -from[2]; left[1] = 0.0; left[2] = from[0];
+                if (Vector3::Dot(left, left) < kEpsilon) {
+                    left[0] = -from[2];
+                    left[1] = 0.0;
+                    left[2] = from[0];
+                }
 
                 invlen = 1.0f / sqrt(Vector3::Dot(left, left));
                 left[0] *= invlen;
@@ -1355,8 +1368,8 @@ struct Vector3Int;
         }
         static void OrthoNormalize(Matrix3x3& matrix) {
             Vector3* c0 = (Vector3*)matrix.GetPtr() + 0;
-            Vector3* c1 = (Vector3*)matrix.GetPtr() + 3;
-            Vector3* c2 = (Vector3*)matrix.GetPtr() + 6;
+            Vector3* c1 = (Vector3*)matrix.GetPtr() + 1;
+            Vector3* c2 = (Vector3*)matrix.GetPtr() + 2;
             Vector3::OrthoNormalize(*c0, *c1, *c2);
         }
 
@@ -1430,6 +1443,7 @@ struct Vector3Int;
         inline Matrix4x4& operator*=(const Matrix4x4& inM) {
             Matrix4x4 tmp;
             MultiplyMatrices4x4(this, &inM, &tmp);
+            *this = tmp;
             return *this;
         }
         inline Matrix4x4& operator=(const Matrix3x3& other) {
@@ -1923,6 +1937,7 @@ struct Vector3Int;
         inline Matrix4x4& SetFromToRotation(const Vector3& from, const Vector3& to) {
             Matrix3x3 mat;
             mat.SetFromToRotation(from, to);
+            *this = mat;
             return *this;
         }
 
@@ -2057,10 +2072,10 @@ struct Vector3Int;
 
     inline void MultiplyMatrices3x4(const Matrix4x4& lhs, const Matrix4x4& rhs, Matrix4x4& res) {
         for (int i = 0; i < 3; i++) {
-            res.m_Data[i]    = lhs.m_Data[i] * rhs.m_Data[0]  + lhs.m_Data[i + 4] * rhs.m_Data[1]  + lhs.m_Data[i + 8] * rhs.m_Data[2];//  + lhs.m_Data[i+12] * rhs.m_Data[3];
-            res.m_Data[i + 4]  = lhs.m_Data[i] * rhs.m_Data[4]  + lhs.m_Data[i + 4] * rhs.m_Data[5]  + lhs.m_Data[i + 8] * rhs.m_Data[6];//  + lhs.m_Data[i+12] * rhs.m_Data[7];
-            res.m_Data[i + 8]  = lhs.m_Data[i] * rhs.m_Data[8]  + lhs.m_Data[i + 4] * rhs.m_Data[9]  + lhs.m_Data[i + 8] * rhs.m_Data[10];// + lhs.m_Data[i+12] * rhs.m_Data[11];
-            res.m_Data[i + 12] = lhs.m_Data[i] * rhs.m_Data[12] + lhs.m_Data[i + 4] * rhs.m_Data[13] + lhs.m_Data[i + 8] * rhs.m_Data[14] + lhs.m_Data[i + 12];// * rhs.m_Data[15];
+            res.m_Data[i]    = lhs.m_Data[i] * rhs.m_Data[0]  + lhs.m_Data[i + 4] * rhs.m_Data[1]  + lhs.m_Data[i + 8] * rhs.m_Data[2];
+            res.m_Data[i + 4]  = lhs.m_Data[i] * rhs.m_Data[4]  + lhs.m_Data[i + 4] * rhs.m_Data[5]  + lhs.m_Data[i + 8] * rhs.m_Data[6];
+            res.m_Data[i + 8]  = lhs.m_Data[i] * rhs.m_Data[8]  + lhs.m_Data[i + 4] * rhs.m_Data[9]  + lhs.m_Data[i + 8] * rhs.m_Data[10];
+            res.m_Data[i + 12] = lhs.m_Data[i] * rhs.m_Data[12] + lhs.m_Data[i + 4] * rhs.m_Data[13] + lhs.m_Data[i + 8] * rhs.m_Data[14] + lhs.m_Data[i + 12];
         }
 
         res.m_Data[3]  = 0.0f;

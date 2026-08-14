@@ -30,7 +30,7 @@ struct Block {
 
     constexpr Block(const char (&str)[N], uint64_t a, uint64_t b) : keyA(a), keyB(b), rot((uint8_t) ((a >> 42) % (uint64_t) N)) {
         for (size_t i = 0; i < N; ++i) {
-            uint64_t k = Mix64(a ^ (uint64_t) i * b + b);
+            uint64_t k = Mix64(a ^ (((uint64_t) i * b) + b));
             uint8_t c = (uint8_t) str[i];
             blob[(i + rot) % N] = (uint8_t) (c ^ (uint8_t) (k >> 56) ^ (uint8_t) (k >> 32) ^ (uint8_t) (k >> 8) ^ (uint8_t) k ^ (uint8_t) (b >> ((i % 8) * 8)));
         }
@@ -38,7 +38,7 @@ struct Block {
 
     __attribute__((noinline)) size_t Restore(char *out) const {
         for (size_t i = 0; i < N; ++i) {
-            uint64_t k = Mix64(keyA ^ (uint64_t) i * keyB + keyB);
+            uint64_t k = Mix64(keyA ^ (((uint64_t) i * keyB) + keyB));
             uint8_t c = ((volatile uint8_t *) blob)[(i + rot) % N];
             ((volatile uint8_t *) out)[i] = (uint8_t) (c ^ (uint8_t) (k >> 56) ^ (uint8_t) (k >> 32) ^ (uint8_t) (k >> 8) ^ (uint8_t) k ^ (uint8_t) (keyB >> ((i % 8) * 8)));
         }

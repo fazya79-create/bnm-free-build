@@ -31,7 +31,7 @@ struct PersistentCallArguments {
 };
 
 struct PersistentCall {
-    BNM::Class m_Target{};
+    IL2CPP::Il2CppObject *m_Target{};
     Structures::Mono::String *m_TargetAssemblyTypeName{};
     PersistentCallArguments *m_Arguments{};
     IL2CPP::MethodInfo *m_Method{};

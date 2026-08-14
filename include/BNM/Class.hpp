@@ -79,8 +79,9 @@ struct Class {
         TryInit();
         auto *lst = (Structures::Mono::List<T> *) NewListInstance();
         if (!lst) return nullptr;
-        lst->_items = NewArray<T>(1);
+        lst->_items = Structures::Mono::Array<T>::Create(1, true);
         lst->_size = 0;
+        lst->_version = 0;
         Structures::Mono::PRIVATE_MonoListData::InitMonoListVTable(lst);
         return lst;
     }
@@ -108,18 +109,18 @@ struct Class {
     }
 };
 
-template<typename T, typename = std::enable_if<std::is_pointer_v<T>>>
+template<typename T, typename = std::enable_if_t<std::is_pointer_v<T>>>
 bool IsA(T object, IL2CPP::Il2CppClass *_class) { return IsA<BNM::IL2CPP::Il2CppObject *>((IL2CPP::Il2CppObject *) object, _class); }
 
 template<>
 bool IsA<IL2CPP::Il2CppObject *>(IL2CPP::Il2CppObject *object, IL2CPP::Il2CppClass *_class);
 
-template<typename T, typename = std::enable_if<std::is_pointer_v<T>>>
+template<typename T, typename = std::enable_if_t<std::is_pointer_v<T>>>
 bool IsA(T object, Class _class) { return IsA(object, _class.GetClass()); }
 
-template<typename T, typename = std::enable_if<std::is_pointer_v<T>>>
+template<typename T, typename = std::enable_if_t<std::is_pointer_v<T>>>
 bool IsA(T object, IL2CPP::Il2CppObject *_object) { if (!_object) return false; return IsA(object, _object->klass); }
 
-template<typename T, typename = std::enable_if<std::is_pointer_v<T>>>
+template<typename T, typename = std::enable_if_t<std::is_pointer_v<T>>>
 bool IsA(T object, MonoType *_type) { return IsA(object, Class(_type)); }
 }

@@ -35,6 +35,7 @@ EventBase::EventBase(const IL2CPP::EventInfo *info) {
 }
 
 EventBase &EventBase::SetInstance(IL2CPP::Il2CppObject *instance) {
+    _instance = instance;
     if (_hasAdd) _add.SetInstance(instance);
     if (_hasRemove) _remove.SetInstance(instance);
     if (_hasRaise) _raise.SetInstance(instance);

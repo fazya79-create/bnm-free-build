@@ -82,6 +82,7 @@ PropertyBase::PropertyBase(const IL2CPP::PropertyInfo *info) {
 }
 
 PropertyBase &PropertyBase::SetInstance(IL2CPP::Il2CppObject *val) {
+    _instance = val;
     if (_hasGetter) _getter.SetInstance(val);
     if (_hasSetter) _setter.SetInstance(val);
     return *this;

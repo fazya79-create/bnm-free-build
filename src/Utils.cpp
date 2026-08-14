@@ -40,12 +40,15 @@ static bool IsBranchHex(const std::string &hex) {
 
 static const char *hexChars = "0123456789ABCDEF";
 
+static constexpr BNM_PTR kMaxJumpScanBytes = 0x2000;
+
 template<size_t len>
 static std::string ReadMemory(BNM_PTR address) {
     char temp[len];
     memset(temp, 0, len);
     std::string ret{};
-    if (memcpy(temp, (void *) address, len) == nullptr) return ret;
+    if (!address) return ret;
+    memcpy(temp, (void *) address, len);
     ret.resize(len * 2, 0);
     auto buf = (char *) ret.data();
     for (size_t i = 0; i < len; ++i) {
@@ -75,15 +78,21 @@ static bool DecodeBranchOrCall(const std::string &hex, BNM_PTR offset, BNM_PTR &
 }
 
 BNM_PTR FindNextJump(BNM_PTR start, uint8_t index) {
+    if (!start || index == 0) return 0;
 #if defined(__ARM_ARCH_7A__) || defined(__aarch64__)
     BNM_PTR offset = 0;
     std::string curHex = ReadMemory<4>(start);
     BNM_PTR outOffset = 0;
     bool out = false;
     while (!(out = DecodeBranchOrCall(curHex, start + offset, outOffset)) || index != 1) {
-        offset += 4;
-        curHex = ReadMemory<4>(start + offset);
         if (out) index--;
+        offset += 4;
+        if (offset >= kMaxJumpScanBytes) {
+            BNM_LOG_WARN("FindNextJump: no branch found within %u bytes from %p", (unsigned) kMaxJumpScanBytes, (void *) start);
+            return 0;
+        }
+        curHex = ReadMemory<4>(start + offset);
+        if (curHex.empty()) return 0;
     }
     return outOffset;
 #elif defined(__i386__) || defined(__x86_64__)
@@ -92,9 +101,14 @@ BNM_PTR FindNextJump(BNM_PTR start, uint8_t index) {
     BNM_PTR outOffset = 0;
     bool out = false;
     while (!(out = IsBranchHex(curHex)) || index != 1) {
-        offset += 1;
-        curHex = ReadMemory<1>(start + offset);
         if (out) index--;
+        offset += 1;
+        if (offset >= kMaxJumpScanBytes) {
+            BNM_LOG_WARN("FindNextJump: no branch found within %u bytes from %p", (unsigned) kMaxJumpScanBytes, (void *) start);
+            return 0;
+        }
+        curHex = ReadMemory<1>(start + offset);
+        if (curHex.empty()) return 0;
     }
     DecodeBranchOrCall(ReadMemory<5>(start + offset), start + offset, outOffset);
     return outOffset;
@@ -117,8 +131,8 @@ void BNM::EmptyMethod() {}
 
 void *BNM::OffsetInLib(void *offsetInMemory) {
     if (offsetInMemory == nullptr) return nullptr;
-    Dl_info info;
-    BNM_dladdr(offsetInMemory, &info);
+    Dl_info info{};
+    if (!BNM_dladdr(offsetInMemory, &info) || !info.dli_fbase) return offsetInMemory;
     return (void *) ((BNM_PTR) offsetInMemory - (BNM_PTR) info.dli_fbase);
 }
 
@@ -127,6 +141,10 @@ void *Utils::OffsetInLib(void *offsetInMemory) {
 }
 
 bool BNM::CheckHandle(void *handle) {
+    if (!handle) return false;
+    
+    if (Internal::il2cppLibraryHandle || Internal::states.state) return false;
+
     void *init = BNM_dlsym(handle, BNM_OBFUSCATE_TMP("il2cpp_init"));
     if (!init) return false;
 
@@ -137,15 +155,3 @@ bool BNM::CheckHandle(void *handle) {
     Internal::il2cppLibraryHandle = handle;
     return true;
 }
-
-#if defined(__ARM_ARCH_7A__)
-#define CURRENT_ARCH "armeabi-v7a"
-#elif defined(__aarch64__)
-#define CURRENT_ARCH "arm64-v8a"
-#elif defined(__i386__)
-#define CURRENT_ARCH "x86"
-#elif defined(__x86_64__)
-#define CURRENT_ARCH "x86_64"
-#elif defined(__riscv)
-#define CURRENT_ARCH "riscv64"
-#endif

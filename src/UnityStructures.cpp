@@ -3,24 +3,27 @@
 using namespace BNM;
 
 namespace BNM::Structures::Unity {
-    void *RaycastHit::GetCollider() const {
-        if (!m_Collider || (BNM_PTR) m_Collider < 0) return {};
+    static void *FindUnityObjectByInstanceId(int instanceId) {
+        if (instanceId <= 0) return nullptr;
         static void *(*FromId)(int) {};
         static void *(*FromIdInjected)(int) {};
-        if (!FromId) FromId = (decltype(FromId)) BNM::GetExternMethod("UnityEngine.Object::FindObjectFromInstanceID");
-        if (!FromIdInjected) FromIdInjected = (decltype(FromIdInjected)) BNM::GetExternMethod("UnityEngine.Object::FindObjectFromInstanceID_Injected");
-        if (FromIdInjected) return (void *) BNM::UnmarshalUnityObject<void *>((BNM_INT_PTR) FromIdInjected(m_Collider));
-        return FromId(m_Collider);
+        static bool resolved = false;
+        if (!resolved) {
+            resolved = true;
+            FromId = (decltype(FromId)) BNM::GetExternMethod("UnityEngine.Object::FindObjectFromInstanceID");
+            FromIdInjected = (decltype(FromIdInjected)) BNM::GetExternMethod("UnityEngine.Object::FindObjectFromInstanceID_Injected");
+        }
+        if (FromIdInjected) return (void *) BNM::UnmarshalUnityObject<void *>((BNM_INT_PTR) FromIdInjected(instanceId));
+        if (FromId) return FromId(instanceId);
+        return nullptr;
+    }
+
+    void *RaycastHit::GetCollider() const {
+        return FindUnityObjectByInstanceId(m_Collider);
     }
 
     void *RaycastHit2D::GetCollider() const {
-        if (!m_Collider || (BNM_PTR) m_Collider < 0) return {};
-        static void *(*FromId)(int) {};
-        static void *(*FromIdInjected)(int) {};
-        if (!FromId) FromId = (decltype(FromId)) BNM::GetExternMethod("UnityEngine.Object::FindObjectFromInstanceID");
-        if (!FromIdInjected) FromIdInjected = (decltype(FromIdInjected)) BNM::GetExternMethod("UnityEngine.Object::FindObjectFromInstanceID_Injected");
-        if (FromIdInjected) return (void *) BNM::UnmarshalUnityObject<void *>((BNM_INT_PTR) FromIdInjected(m_Collider));
-        return FromId(m_Collider);
+        return FindUnityObjectByInstanceId(m_Collider);
     }
     const Color Color::black = {0.f, 0.f, 0.f};
     const Color Color::red = {1.f, 0.f, 0.f};
@@ -65,6 +68,9 @@ namespace BNM::Structures::Unity {
 
     const Matrix4x4 Matrix4x4::identity(InitIdentity::kIdentity);
 
+    const Matrix3x3 Matrix3x3::zero{0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
+    const Matrix3x3 Matrix3x3::identity{1.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 1.f};
+
     Matrix3x3& Matrix3x3::operator=(const Matrix4x4& other) {
         m_Data[0] = other.m_Data[0];
         m_Data[1] = other.m_Data[1];
@@ -99,8 +105,9 @@ namespace BNM::Structures::Unity {
     }
     bool Matrix3x3::Invert() {
         Matrix4x4 m = *this;
-        bool success = InvertMatrix4x4_Full(m.GetPtr(), m.GetPtr());
-        return success;
+        if (!InvertMatrix4x4_Full(m.GetPtr(), m.GetPtr())) return false;
+        *this = m;
+        return true;
     }
 
 }

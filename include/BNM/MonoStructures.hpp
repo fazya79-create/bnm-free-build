@@ -48,17 +48,21 @@ struct Array {
         for (IL2CPP::il2cpp_array_size_t i = 0; i < max_length; ++i) ret.push_back((*const_cast<Array<T> *>(this))[i]);
         return ret;
     }
-    inline void Destroy() { Internal::api.il2cpp_free(this); }
+    [[deprecated("managed arrays are owned by the il2cpp GC; Destroy() is a no-op")]]
+    inline void Destroy() {}
     inline T *GetItems() { return (T *) ((char *) this + sizeof(IL2CPP::Il2CppArray)); }
     static Array<T> *Create(IL2CPP::il2cpp_array_size_t size, bool zeroed = false);
     template<typename ...Args>
     static Array<T> *CreateWithItems(Args &&...args) {
         auto arr = Create(sizeof...(Args), false);
+        if (!arr) return nullptr;
         T values[] = {static_cast<T>(args)...};
         for (IL2CPP::il2cpp_array_size_t i = 0; i < sizeof...(Args); ++i) (*arr)[i] = values[i];
         return arr;
     }
     inline void CopyFrom(T *source, IL2CPP::il2cpp_array_size_t count) {
+        if (!source) return;
+        if (count > max_length) count = max_length;
         for (IL2CPP::il2cpp_array_size_t i = 0; i < count; ++i) (*this)[i] = source[i];
     }
 };
@@ -103,30 +107,38 @@ struct List {
         return ret;
     }
 
-    inline void Resize(int32_t newSize) {
+    inline bool Resize(int32_t newSize) {
         if (newSize < 1) newSize = 1;
         if (!_items) {
-            _items = Mono::Array<T>::Create(newSize);
-            return;
+            _items = Mono::Array<T>::Create(newSize, true);
+            return _items != nullptr;
         }
-        auto newArr = Mono::Array<T>::Create(newSize);
+        auto newArr = Mono::Array<T>::Create(newSize, true);
+        if (!newArr) return false;
         auto copyCount = _size < newSize ? _size : newSize;
         for (int32_t i = 0; i < copyCount; ++i) (*newArr)[i] = (*_items)[i];
         _items = newArr;
+        return true;
     }
-    inline void GrowIfNeeded(int32_t n) { if (_size + n > (int32_t) _items->Size()) Resize(_size + n); }
+    inline bool GrowIfNeeded(int32_t n) {
+        if (!_items) return Resize(n > 4 ? n : 4);
+        if (_size + n > (int32_t) _items->Size()) return Resize(_size + n);
+        return true;
+    }
 
     inline void Add(T item) {
         if (!_items) {
-            _items = Mono::Array<T>::Create(4);
+            _items = Mono::Array<T>::Create(4, true);
+            if (!_items) return;
             _size = 0;
         }
-        if (_size >= (int32_t) _items->Size()) Resize(_size * 2 + 1);
+        if (_size >= (int32_t) _items->Size() && !Resize(_size * 2 + 1)) return;
         (*_items)[_size++] = item;
         ++_version;
     }
 
     inline void Shift(int32_t start, int32_t delta) {
+        if (!_items) return;
         auto oldSize = _size;
         if (delta < 0) start -= delta;
         if (start < _size) memmove(_items->GetItems() + start + delta, _items->GetItems() + start, (_size - start) * sizeof(T));
@@ -148,24 +160,24 @@ struct List {
     }
 
     inline void Clear() {
-        if (_items) memset(_items->GetItems(), 0, _size * sizeof(T));
+        if (_items && _size > 0) memset(_items->GetItems(), 0, _size * sizeof(T));
         _size = 0;
         ++_version;
     }
 
     inline T GetItem(int32_t index) const {
-        if (index >= _size) return {};
-        return (*_items)[index];
+        if (index < 0 || index >= _size || !_items) return {};
+        return (*const_cast<List<T> *>(this)->_items)[index];
     }
     inline void SetItem(int32_t index, T item) {
-        if (index >= _size) return;
+        if (index < 0 || index >= _size || !_items) return;
         (*_items)[index] = item;
         ++_version;
     }
 
     inline void Insert(int32_t index, T item) {
-        if (index > _size) return;
-        if (_size == (int32_t) _items->Size()) GrowIfNeeded(1);
+        if (index < 0 || index > _size) return;
+        if (!_items || _size == (int32_t) _items->Size()) if (!GrowIfNeeded(1)) return;
         if (index < _size) memmove(_items->GetItems() + index + 1, _items->GetItems() + index, (_size - index) * sizeof(T));
         (*_items)[index] = item;
         ++_size;
@@ -173,15 +185,17 @@ struct List {
     }
 
     inline int32_t IndexOf(T item) const {
-        for (int32_t i = 0; i < _size; ++i) if ((*_items)[i] == item) return i;
+        if (!_items) return -1;
+        for (int32_t i = 0; i < _size; ++i) if ((*const_cast<List<T> *>(this)->_items)[i] == item) return i;
         return -1;
     }
 
     inline bool Contains(T item) const { return IndexOf(item) != -1; }
 
     inline void CopyTo(Array<T> *arr, int32_t arrIndex) const {
-        if (!_items || !arr) return;
-        memcpy(_items->GetItems(), arr->GetItems() + arrIndex, _size * sizeof(T));
+        if (!_items || !arr || arrIndex < 0 || _size <= 0) return;
+        if ((IL2CPP::il2cpp_array_size_t) (arrIndex + _size) > arr->Size()) return;
+        memcpy(arr->GetItems() + arrIndex, const_cast<List<T> *>(this)->_items->GetItems(), _size * sizeof(T));
     }
 
     inline void *GetSyncRoot() { if (!_syncRoot) _syncRoot = (IL2CPP::Il2CppObject *) PRIVATE_MonoListData::CompareExchange4List(_syncRoot); return _syncRoot; }
@@ -197,7 +211,7 @@ namespace PRIVATE_MonoListData {
     constexpr std::size_t WrappedTypeNamePrefixLength() { return WrappedTypeName<void>().find("void"); }
     constexpr std::size_t WrappedTypeNameSuffixLength() { return WrappedTypeName<void>().length() - WrappedTypeNamePrefixLength() - 4; }
     constexpr uint32_t FNV1a(const char *str, size_t n, uint32_t hash = 2166136261U) {
-        return n == 0 ? hash : FNV1a(str + 1, n - 1, (hash ^ str[0]) * 19777619U);
+        return n == 0 ? hash : FNV1a(str + 1, n - 1, (hash ^ (uint8_t) str[0]) * 16777619U);
     }
     constexpr uint32_t FNV1a(const std::string_view &str) { return FNV1a(str.data(), str.size()); }
     template<typename T> constexpr uint32_t HashedTypeName() {

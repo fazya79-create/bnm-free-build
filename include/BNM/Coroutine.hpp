@@ -5,8 +5,6 @@
 #include "Internals.hpp"
 #include "CompileTimeClass.hpp"
 namespace BNM {
-extern bool InvertMatrix4x4_Full(const float *inMatrix, float *dest);
-
 struct CustomWait : BNM::IL2CPP::Il2CppObject {
     std::function<bool()> _func{};
     bool _isUntil = false;

@@ -188,15 +188,22 @@ BNM::Coroutine::WaitWhile::WaitWhile(const std::function<bool()> &function) {
 }
 
 void Utils::LogCompileTimeClass(const CompileTimeClass &compileTimeClass) {
-    for (auto info : compileTimeClass._stack) {
+    for (auto &info : compileTimeClass._stack) {
+        if (!info) continue;
         switch (info->_baseType) {
             case CompileTimeClass::_BaseType::Class: {
-                auto classInfo = (CompileTimeClass::_ClassInfo *) info; (void) classInfo;
-                BNM_LOG_ERR("\tClass( imageName: \"%s\", namespace: \"%s\", name: \"%s\") - %s", classInfo->_imageName, classInfo->_namespace, classInfo->_name, compileTimeClass._loadedClass.str().data());
+                auto classInfo = (CompileTimeClass::_ClassInfo *) info.get();
+                BNM_LOG_ERR("\tClass( imageName: \"%s\", namespace: \"%s\", name: \"%s\") - %s",
+                            classInfo->_imageName ? classInfo->_imageName : "",
+                            classInfo->_namespace ? classInfo->_namespace : "",
+                            classInfo->_name ? classInfo->_name : "",
+                            compileTimeClass._loadedClass.str().c_str());
             } break;
             case CompileTimeClass::_BaseType::Inner: {
-                auto innerInfo = (CompileTimeClass::_InnerInfo *) info; (void) innerInfo;
-                BNM_LOG_ERR("\tInner( name: \"%s\") - %s", innerInfo->_name, compileTimeClass._loadedClass.str().data());
+                auto innerInfo = (CompileTimeClass::_InnerInfo *) info.get();
+                BNM_LOG_ERR("\tInner( name: \"%s\") - %s",
+                            innerInfo->_name ? innerInfo->_name : "",
+                            compileTimeClass._loadedClass.str().c_str());
             } break;
             case CompileTimeClass::_BaseType::Modifier:
             case CompileTimeClass::_BaseType::Generic:

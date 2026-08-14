@@ -3,7 +3,12 @@
 using namespace BNM;
 
 Structures::Mono::String *BNM::CreateMonoString(const std::string_view &str) {
-    return (Structures::Mono::String *) Internal::api.il2cpp_string_new(str.data());
+    if (!Internal::api.il2cpp_string_new_len) {
+        if (!Internal::api.il2cpp_string_new) return nullptr;
+        std::string copy(str);
+        return (Structures::Mono::String *) Internal::api.il2cpp_string_new(copy.c_str());
+    }
+    return (Structures::Mono::String *) Internal::api.il2cpp_string_new_len(str.data(), (uint32_t) str.size());
 }
 
 namespace BNM::Structures::Mono::PRIVATE_MonoListData {
@@ -12,7 +17,6 @@ namespace BNM::Structures::Mono::PRIVATE_MonoListData {
     void *CompareExchange4List(void *syncRoot) {
         if (Internal::vmData.Interlocked$$CompareExchange.IsValid()) {
             auto m = Internal::vmData.Interlocked$$CompareExchange.cast<Method<void *>>();
-            m.SetInstance(nullptr);
             m((void **) &syncRoot, (void *) Internal::vmData.Object.CreateNewInstance(), (void *) nullptr);
         }
         return syncRoot;
@@ -28,7 +32,7 @@ namespace BNM::Structures::Mono::PRIVATE_MonoListData {
         auto typedClass = (IL2CPP::Il2CppClass *) BNM_malloc(size);
         memcpy(typedClass, templateClass, size);
 
-        std::map<size_t, IL2CPP::MethodInfo *> createdMethods{};
+        std::map<uint32_t, IL2CPP::MethodInfo *> createdMethods{};
         for (uint16_t i = 4; i < typedClass->vtable_count; ++i) {
             auto &cur = typedClass->vtable[i];
             if (!cur.method || !cur.method->name) continue;
@@ -46,6 +50,7 @@ namespace BNM::Structures::Mono::PRIVATE_MonoListData {
                 methodInfo = (IL2CPP::MethodInfo *) BNM_malloc(sizeof(IL2CPP::MethodInfo));
                 *methodInfo = *cur.method;
                 methodInfo->methodPointer = (IL2CPP::Il2CppMethodPointer) iterator->ptr;
+                methodInfo->virtualMethodPointer = (IL2CPP::Il2CppMethodPointer) iterator->ptr;
             }
             cur.method = methodInfo;
             cur.methodPtr = methodInfo->methodPointer;
@@ -58,6 +63,7 @@ namespace BNM::Structures::Mono::PRIVATE_MonoListData {
 namespace BNM::Exceptions {
     Exception TryInvoke(const std::function<void()> &func) {
         auto &api = BNM::Internal::api;
+        if (!api.il2cpp_runtime_invoke) return {};
         IL2CPP::Il2CppType type;
         memset(&type, 0, sizeof(type));
         type.type = IL2CPP::IL2CPP_TYPE_VOID;
@@ -81,17 +87,3 @@ namespace BNM::Exceptions {
 Structures::Mono::String *Structures::Mono::String::Empty() {
     return (Structures::Mono::String *) (Internal::vmData.String$$Empty ? *Internal::vmData.String$$Empty : nullptr);
 }
-
-template<typename T>
-Structures::Mono::Array<T> *Structures::Mono::Array<T>::Create(IL2CPP::il2cpp_array_size_t size, bool zeroed) {
-    auto cls = BNM::Defaults::Get<T>().ToClass();
-    if (!cls) return nullptr;
-    auto arrayClass = cls.GetArray();
-    if (!arrayClass) return nullptr;
-    auto arr = (Array<T> *) BNM::Internal::api.il2cpp_array_new(arrayClass._data, size);
-    if (arr && zeroed) memset((char *) arr + sizeof(IL2CPP::Il2CppArray), 0, size * sizeof(T));
-    return arr;
-}
-
-template Structures::Mono::Array<MonoType *> *Structures::Mono::Array<MonoType *>::Create(IL2CPP::il2cpp_array_size_t, bool);
-template Structures::Mono::Array<int> *Structures::Mono::Array<int>::Create(IL2CPP::il2cpp_array_size_t, bool);
