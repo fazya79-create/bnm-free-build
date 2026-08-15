@@ -27,6 +27,8 @@ file(GLOB SHADOWHOOK_SRC
     ${SHADOWHOOK_DIR}/third_party/*/*.c
 )
 
+file(GLOB BNM_SRC ${CMAKE_CURRENT_SOURCE_DIR}/Includes/BNM/src/*.cpp)
+
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/Includes/BNM
@@ -41,21 +43,8 @@ include_directories(
 
 add_library(Demo SHARED
     Main.cpp
-    src/BNM.cpp
     ${SHADOWHOOK_SRC}
-    src/Utils.cpp
-    src/Loading.cpp
-    src/Class.cpp
-    src/MethodBase.cpp
-    src/FieldBase.cpp
-    src/PropertyBase.cpp
-    src/Image.cpp
-    src/MonoStructures.cpp
-    src/Defaults.cpp
-    src/UnityStructures.cpp
-    src/Delegates.cpp
-    src/ClassesManagement.cpp
-    src/Coroutine.cpp
+    ${BNM_SRC}
 )
 
 target_compile_definitions(Demo PRIVATE BNM_USE_SHADOWHOOK)
