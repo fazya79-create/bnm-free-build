@@ -18,6 +18,7 @@
 #include "CompileTimeClass.hpp"
 #include "Management.hpp"
 #include "Coroutine.hpp"
+#include "ComplexMonoStructures.hpp"
 
 #ifdef BNM_USE_DOBBY
 #include <dobby.h>

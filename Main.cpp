@@ -6,6 +6,8 @@
 
 #include "BNM.hpp"
 
+template struct BNM::Structures::Mono::Dictionary<int, int>;
+
 #define LOG_TAG "BNM-Free"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
