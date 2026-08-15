@@ -29,7 +29,7 @@ file(GLOB SHADOWHOOK_SRC
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/BNM
+    ${CMAKE_CURRENT_SOURCE_DIR}/Includes/BNM
     ${SHADOWHOOK_DIR}
     ${SHADOWHOOK_DIR}/include
     ${SHADOWHOOK_DIR}/arch/${SHADOWHOOK_ARCH}
@@ -41,7 +41,7 @@ include_directories(
 
 add_library(Demo SHARED
     Main.cpp
-    BNM.cpp
+    src/BNM.cpp
     ${SHADOWHOOK_SRC}
     src/Utils.cpp
     src/Loading.cpp
