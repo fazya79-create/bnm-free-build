@@ -4,6 +4,7 @@
 #include <dlfcn.h>
 #include <android/log.h>
 
+#include <atomic>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,79 @@ template struct BNM::Structures::Mono::Dictionary<int, int>;
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
 JavaVM *jvm;
+
+const char *CurrencyName(int type) {
+    switch (type) {
+        case 1:
+            return "Coins";
+        case 2:
+            return "Keys";
+        case 3:
+            return "Hoverboards";
+        case 4:
+            return "HeadStarts";
+        case 5:
+            return "ScoreBoosters";
+        case 6:
+            return "EventCoins";
+        case 7:
+            return "Tickets";
+        case 8:
+            return "SeasonTokens";
+        case 9:
+            return "SeasonPoints";
+        case 10:
+            return "IAP";
+        case 11:
+            return "GoldenKeys";
+        case 12:
+            return "CollectionPoints";
+        case 13:
+            return "Ads";
+        case 14:
+            return "SkipAdTickets";
+        case 15:
+            return "PvpTicket";
+        case 16:
+            return "CrewCaps";
+        case 20:
+            return "SprayCan";
+        case 21:
+            return "Boombox";
+        case 22:
+            return "Hat";
+        default:
+            return "?";
+    }
+}
+
+using GetCurrencyFn = int (*)(void *, int);
+static GetCurrencyFn orig_GetCurrency = nullptr;
+static std::atomic<void *> capturedWallet{nullptr};
+static std::atomic<int> hookCallCount{0};
+
+static int Hooked_GetCurrency(void *instance, int type) {
+    int result = orig_GetCurrency ? orig_GetCurrency(instance, type) : 0;
+    int calls = hookCallCount.fetch_add(1);
+    if (calls < 5)
+        LOGI("GetCurrency(%s=%d) = %d", CurrencyName(type), type, result);
+    if (instance && !capturedWallet.load())
+        capturedWallet.store(instance);
+    return result;
+}
+
+void DumpCurrencies(void *walletInstance) {
+    auto dict = *(BNM::Structures::Mono::Dictionary<int, int> **) ((char *) walletInstance + 0x30);
+    if (!dict) {
+        LOGI("Currencies dictionary: null");
+        return;
+    }
+    LOGI("Currencies dictionary: %p count=%d", (void *) dict, dict->GetSize());
+    auto keys = dict->GetKeys();
+    auto values = dict->GetValues();
+    size_t n = keys.size() < values.size() ? keys.size() : values.size();
+    for (size_t i = 0; i < n; ++i) LOGI("  %s(%d) = %d", CurrencyName(keys[i]), keys[i], values[i]);
+}
 
 void TestUnityVersion() {
     auto appClass = BNM::Class(BNM_OBFUSCATE("UnityEngine"), BNM_OBFUSCATE("Application"),
@@ -85,33 +159,43 @@ void TestCurrencyStaticMethod() {
     }
 }
 
-void TestWalletModelReflection() {
+void SetupWalletCapture() {
     auto wallet =
         BNM::Class(BNM_OBFUSCATE("SYBO.Subway.Core.ProfileData"), BNM_OBFUSCATE("WalletModel"),
                    BNM::Image(BNM_OBFUSCATE("SYBO.Subway.Core.ProfileData.dll")));
     if (!wallet) {
-        LOGI("WalletModel test skipped: class not resolved");
+        LOGI("wallet capture skipped: WalletModel not resolved");
         return;
     }
 
-    auto fields = wallet.GetFields();
-    LOGI("WalletModel fields: %zu", fields.size());
-    for (auto &f : fields)
-        if (auto info = f.GetInfo())
-            LOGI("  field: %s", info->name ? info->name : "(null)");
+    auto getCurr = wallet.GetMethod(BNM_OBFUSCATE("GetCurrency"), 1);
+    if (!getCurr.IsValid()) {
+        LOGI("wallet capture skipped: GetCurrency not found");
+        return;
+    }
 
-    auto methods = wallet.GetMethods();
-    LOGI("WalletModel methods: %zu", methods.size());
-    for (auto &m : methods)
-        if (auto info = m.GetInfo())
-            LOGI("  method: %s(%d)", info->name ? info->name : "(null)", info->parameters_count);
+    auto info = getCurr.GetInfo();
+    if (!info || !info->methodPointer) {
+        LOGI("wallet capture skipped: no methodPointer");
+        return;
+    }
+
+    ::BasicHook((void *) info->methodPointer, (void *) Hooked_GetCurrency, orig_GetCurrency);
+    LOGI("WalletModel.GetCurrency hooked at %p, waiting for game to call it...",
+         BNM::OffsetInLib((void *) info->methodPointer));
 }
 
-void TestGenericDictionaryMetadata() {
-    auto dictClass =
-        BNM::Class(BNM_OBFUSCATE("System.Collections.Generic"), BNM_OBFUSCATE("Dictionary`2"),
-                   BNM::Image(BNM_OBFUSCATE("mscorlib.dll")));
-    LOGI("Dictionary`2 class: %s", dictClass ? dictClass.str().c_str() : "(null)");
+void WaitForWalletAndDump() {
+    for (int i = 0; i < 60 && !capturedWallet.load(); i++) sleep(1);
+
+    auto inst = capturedWallet.load();
+    if (!inst) {
+        LOGI("WalletModel instance not captured (no GetCurrency call within 60s)");
+        return;
+    }
+
+    LOGI("WalletModel instance captured: %p (hook calls so far: %d)", inst, hookCallCount.load());
+    DumpCurrencies(inst);
 }
 
 void *MainThread(void *) {
@@ -136,13 +220,14 @@ void *MainThread(void *) {
     TestUnityVersion();
     TestSubwaySurferMetadata();
     TestCurrencyStaticMethod();
-    TestWalletModelReflection();
-    TestGenericDictionaryMetadata();
-
-    LOGI("TEST DONE");
+    SetupWalletCapture();
 
     if (attached)
         BNM::DetachIl2Cpp();
+
+    WaitForWalletAndDump();
+
+    LOGI("TEST DONE");
     return nullptr;
 }
 
