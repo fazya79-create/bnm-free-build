@@ -31,7 +31,8 @@ file(GLOB BNM_SRC ${CMAKE_CURRENT_SOURCE_DIR}/Includes/BNM/src/*.cpp)
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/Includes/BNM
+    ${CMAKE_CURRENT_SOURCE_DIR}/Includes/BNM/include/BNM
+    ${CMAKE_CURRENT_SOURCE_DIR}/Includes/BNM/src/private
     ${SHADOWHOOK_DIR}
     ${SHADOWHOOK_DIR}/include
     ${SHADOWHOOK_DIR}/arch/${SHADOWHOOK_ARCH}
