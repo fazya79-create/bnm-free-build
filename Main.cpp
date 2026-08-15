@@ -58,16 +58,17 @@ void TestSubwaySurferMetadata() {
 }
 
 void TestCurrencyStaticMethod() {
-    auto currency =
-        BNM::Class(BNM_OBFUSCATE("SYBO.Subway.Core.CommonData"), BNM_OBFUSCATE("Currency"),
-                   BNM::Image(BNM_OBFUSCATE("SYBO.Subway.Core.CommonData.dll")));
-    if (!currency) {
-        LOGI("Currency test skipped: class not resolved");
+    auto currencyExtensions = BNM::Class(
+        BNM_OBFUSCATE("SYBO.Subway.Core.CommonData"), BNM_OBFUSCATE("CurrencyExtensions"),
+        BNM::Image(BNM_OBFUSCATE("SYBO.Subway.Core.CommonData.dll")));
+    if (!currencyExtensions) {
+        LOGI("CurrencyExtensions test skipped: class not resolved");
         return;
     }
 
-    auto isExpirable = currency.GetMethod(BNM_OBFUSCATE("IsExpirableCurrency"), 1);
-    LOGI("Currency.IsExpirableCurrency resolved: %s", isExpirable.IsValid() ? "true" : "false");
+    auto isExpirable = currencyExtensions.GetMethod(BNM_OBFUSCATE("IsExpirableCurrency"), 1);
+    LOGI("CurrencyExtensions.IsExpirableCurrency resolved: %s",
+         isExpirable.IsValid() ? "true" : "false");
     if (!isExpirable.IsValid())
         return;
 
