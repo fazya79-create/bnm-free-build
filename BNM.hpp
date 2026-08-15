@@ -37,14 +37,25 @@ inline void Unhook(PTR_T ptr) {
 }
 #elif defined(BNM_USE_SHADOWHOOK)
 #include <shadowhook.h>
+#include <mutex>
+namespace BNM_ShadowHookInternal {
+inline std::once_flag initFlag;
+inline void EnsureInit() { std::call_once(initFlag, [] { shadowhook_init(SHADOWHOOK_MODE_UNIQUE, false); }); }
+}
 template<typename PTR_T, typename NEW_T, typename T_OLD>
 inline void *BasicHook(PTR_T ptr, NEW_T newMethod, T_OLD &oldBytes) {
-    if ((void *) ptr != nullptr) return shadowhook_hook_func_addr((void *) ptr, (void *) newMethod, (void **) &oldBytes);
+    if ((void *) ptr != nullptr) {
+        BNM_ShadowHookInternal::EnsureInit();
+        return shadowhook_hook_func_addr((void *) ptr, (void *) newMethod, (void **) &oldBytes);
+    }
     return nullptr;
 }
 template<typename PTR_T, typename NEW_T, typename T_OLD>
 inline void *BasicHook(PTR_T ptr, NEW_T newMethod, T_OLD &&oldBytes) {
-    if ((void *) ptr != nullptr) return shadowhook_hook_func_addr((void *) ptr, (void *) newMethod, (void **) &oldBytes);
+    if ((void *) ptr != nullptr) {
+        BNM_ShadowHookInternal::EnsureInit();
+        return shadowhook_hook_func_addr((void *) ptr, (void *) newMethod, (void **) &oldBytes);
+    }
     return nullptr;
 }
 template<typename PTR_T>
