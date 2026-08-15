@@ -1,0 +1,15 @@
+# BNM-Free code style
+# Modern-4 custom: Google base, indent 4, namespaces indented,
+# short if-statements always multi-line, brace inline.
+# NOTE: include order is preserved (BNM headers are include-order dependent).
+# Requires clang-format >= 12.
+BasedOnStyle: Google
+IndentWidth: 4
+ColumnLimit: 100
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: All
+BreakBeforeBraces: Attach
+PointerAlignment: Right
+SpaceAfterCStyleCast: true
+NamespaceIndentation: All
+SortIncludes: false

@@ -4,27 +4,29 @@ using namespace BNM;
 
 namespace BNM::Structures::Unity {
     static void *FindUnityObjectByInstanceId(int instanceId) {
-        if (instanceId <= 0) return nullptr;
+        if (instanceId <= 0)
+            return nullptr;
         static void *(*FromId)(int) {};
         static void *(*FromIdInjected)(int) {};
         static bool resolved = false;
         if (!resolved) {
             resolved = true;
-            FromId = (decltype(FromId)) BNM::GetExternMethod("UnityEngine.Object::FindObjectFromInstanceID");
-            FromIdInjected = (decltype(FromIdInjected)) BNM::GetExternMethod("UnityEngine.Object::FindObjectFromInstanceID_Injected");
+            FromId = (decltype(FromId)) BNM::GetExternMethod(
+                "UnityEngine.Object::FindObjectFromInstanceID");
+            FromIdInjected = (decltype(FromIdInjected)) BNM::GetExternMethod(
+                "UnityEngine.Object::FindObjectFromInstanceID_Injected");
         }
-        if (FromIdInjected) return (void *) BNM::UnmarshalUnityObject<void *>((BNM_INT_PTR) FromIdInjected(instanceId));
-        if (FromId) return FromId(instanceId);
+        if (FromIdInjected)
+            return (void *) BNM::UnmarshalUnityObject<void *>(
+                (BNM_INT_PTR) FromIdInjected(instanceId));
+        if (FromId)
+            return FromId(instanceId);
         return nullptr;
     }
 
-    void *RaycastHit::GetCollider() const {
-        return FindUnityObjectByInstanceId(m_Collider);
-    }
+    void *RaycastHit::GetCollider() const { return FindUnityObjectByInstanceId(m_Collider); }
 
-    void *RaycastHit2D::GetCollider() const {
-        return FindUnityObjectByInstanceId(m_Collider);
-    }
+    void *RaycastHit2D::GetCollider() const { return FindUnityObjectByInstanceId(m_Collider); }
     const Color Color::black = {0.f, 0.f, 0.f};
     const Color Color::red = {1.f, 0.f, 0.f};
     const Color Color::green = {0.f, 1.f, 0.f};
@@ -71,7 +73,7 @@ namespace BNM::Structures::Unity {
     const Matrix3x3 Matrix3x3::zero{0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
     const Matrix3x3 Matrix3x3::identity{1.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 1.f};
 
-    Matrix3x3& Matrix3x3::operator=(const Matrix4x4& other) {
+    Matrix3x3 &Matrix3x3::operator=(const Matrix4x4 &other) {
         m_Data[0] = other.m_Data[0];
         m_Data[1] = other.m_Data[1];
         m_Data[2] = other.m_Data[2];
@@ -83,7 +85,7 @@ namespace BNM::Structures::Unity {
         m_Data[8] = other.m_Data[10];
         return *this;
     }
-    Matrix3x3::Matrix3x3(const Matrix4x4& other) {
+    Matrix3x3::Matrix3x3(const Matrix4x4 &other) {
         m_Data[0] = other.m_Data[0];
         m_Data[1] = other.m_Data[1];
         m_Data[2] = other.m_Data[2];
@@ -94,7 +96,7 @@ namespace BNM::Structures::Unity {
         m_Data[7] = other.m_Data[9];
         m_Data[8] = other.m_Data[10];
     }
-    Matrix3x3& Matrix3x3::operator*=(const Matrix4x4& inM) {
+    Matrix3x3 &Matrix3x3::operator*=(const Matrix4x4 &inM) {
         for (int i = 0; i < 3; i++) {
             float v[3] = {Get(i, 0), Get(i, 1), Get(i, 2)};
             Get(i, 0) = v[0] * inM.Get(0, 0) + v[1] * inM.Get(1, 0) + v[2] * inM.Get(2, 0);
@@ -105,9 +107,10 @@ namespace BNM::Structures::Unity {
     }
     bool Matrix3x3::Invert() {
         Matrix4x4 m = *this;
-        if (!InvertMatrix4x4_Full(m.GetPtr(), m.GetPtr())) return false;
+        if (!InvertMatrix4x4_Full(m.GetPtr(), m.GetPtr()))
+            return false;
         *this = m;
         return true;
     }
 
-}
+}  // namespace BNM::Structures::Unity

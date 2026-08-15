@@ -39,13 +39,19 @@ typedef unsigned int BNM_PTR;
 #include "Obfuscation.hpp"
 #define BNM_VER "1.0.0"
 
-#define BNM_LOG_INFO(...) ((void)__android_log_print(4, "BNM-Free", __VA_ARGS__))
-#define BNM_LOG_DEBUG(...) ((void)__android_log_print(3, "BNM-Free", __VA_ARGS__))
-#define BNM_LOG_DEBUG_IF(condition, ...) if (condition) ((void)__android_log_print(3, "BNM-Free", __VA_ARGS__))
-#define BNM_LOG_ERR(...) ((void)__android_log_print(6, "BNM-Free", __VA_ARGS__))
-#define BNM_LOG_ERR_IF(condition, ...) if (condition) ((void)__android_log_print(6, "BNM-Free", __VA_ARGS__))
-#define BNM_LOG_WARN(...) ((void)__android_log_print(5, "BNM-Free", __VA_ARGS__))
-#define BNM_LOG_WARN_IF(condition, ...) if (condition) ((void)__android_log_print(5, "BNM-Free", __VA_ARGS__))
+#define BNM_LOG_INFO(...) ((void) __android_log_print(4, "BNM-Free", __VA_ARGS__))
+#define BNM_LOG_DEBUG(...) ((void) __android_log_print(3, "BNM-Free", __VA_ARGS__))
+#define BNM_LOG_DEBUG_IF(condition, ...) \
+    if (condition)                       \
+    ((void) __android_log_print(3, "BNM-Free", __VA_ARGS__))
+#define BNM_LOG_ERR(...) ((void) __android_log_print(6, "BNM-Free", __VA_ARGS__))
+#define BNM_LOG_ERR_IF(condition, ...) \
+    if (condition)                     \
+    ((void) __android_log_print(6, "BNM-Free", __VA_ARGS__))
+#define BNM_LOG_WARN(...) ((void) __android_log_print(5, "BNM-Free", __VA_ARGS__))
+#define BNM_LOG_WARN_IF(condition, ...) \
+    if (condition)                      \
+    ((void) __android_log_print(5, "BNM-Free", __VA_ARGS__))
 
 #if defined(__ARM_ARCH_7A__)
 #define CURRENT_ARCH "armeabi-v7a"

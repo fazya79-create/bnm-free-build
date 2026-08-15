@@ -3,7 +3,8 @@
 using namespace BNM;
 
 FieldBase::FieldBase(IL2CPP::FieldInfo *info) {
-    if (!info) return;
+    if (!info)
+        return;
 
     _isConst = Internal::api.il2cpp_field_is_literal(info);
     auto flags = Internal::api.il2cpp_field_get_flags(info);
@@ -30,7 +31,8 @@ FieldBase &FieldBase::SetInstance(IL2CPP::Il2CppObject *val) {
 
 void *FieldBase::GetFieldPointer() const {
     auto &api = Internal::api;
-    if (!_data) return nullptr;
+    if (!_data)
+        return nullptr;
     if (!_isStatic && !Utils::IsAllocated(_instance)) {
         BNM_LOG_ERR("Field::GetFieldPointer dead instance: %s", str().c_str());
         return nullptr;
@@ -49,21 +51,25 @@ void *FieldBase::GetFieldPointer() const {
         auto staticData = api.il2cpp_class_get_static_field_data(_data->parent);
         return staticData ? (void *) ((BNM_PTR) staticData + offset) : nullptr;
     }
-    return (void *) ((BNM_PTR) _instance + offset - (_isInStruct ? sizeof(IL2CPP::Il2CppObject) : 0));
+    return (void *) ((BNM_PTR) _instance + offset -
+                     (_isInStruct ? sizeof(IL2CPP::Il2CppObject) : 0));
 }
 
 BNM::Class FieldBase::GetType() const {
-    if (!_data) return {};
+    if (!_data)
+        return {};
     return Internal::api.il2cpp_field_get_type(_data);
 }
 
 BNM::Class FieldBase::GetParentClass() const {
-    if (!_data) return {};
+    if (!_data)
+        return {};
     return Internal::api.il2cpp_field_get_parent(_data);
 }
 
 PropertyBase::PropertyBase(const IL2CPP::PropertyInfo *info) {
-    if (!info) return;
+    if (!info)
+        return;
 
     _data = (IL2CPP::PropertyInfo *) info;
 
@@ -83,7 +89,9 @@ PropertyBase::PropertyBase(const IL2CPP::PropertyInfo *info) {
 
 PropertyBase &PropertyBase::SetInstance(IL2CPP::Il2CppObject *val) {
     _instance = val;
-    if (_hasGetter) _getter.SetInstance(val);
-    if (_hasSetter) _setter.SetInstance(val);
+    if (_hasGetter)
+        _getter.SetInstance(val);
+    if (_hasSetter)
+        _setter.SetInstance(val);
     return *this;
 }

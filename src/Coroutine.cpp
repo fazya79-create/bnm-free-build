@@ -3,27 +3,32 @@
 using namespace BNM;
 
 namespace BNM::Internal {
-MANAGEMENT_STRUCTURES::CustomClass coroutineIEClass{};
-MANAGEMENT_STRUCTURES::CustomClass coroutineWaitClass{};
-BNM::Class coroutineAsyncOperation{}, coroutineWaitForEndOfFrame{}, coroutineWaitForFixedUpdate{}, coroutineWaitForSeconds{}, coroutineWaitForSecondsRealtime{};
+    MANAGEMENT_STRUCTURES::CustomClass coroutineIEClass{};
+    MANAGEMENT_STRUCTURES::CustomClass coroutineWaitClass{};
+    BNM::Class coroutineAsyncOperation{}, coroutineWaitForEndOfFrame{},
+        coroutineWaitForFixedUpdate{}, coroutineWaitForSeconds{}, coroutineWaitForSecondsRealtime{};
 
-}
+}  // namespace BNM::Internal
 
 void BNM::Internal::SetupCoroutine() {
     using namespace BNM::MANAGEMENT_STRUCTURES;
 
     static CustomMethod ieMoveNext{}, ieReset{}, ieCurrent{};
     coroutineIEClass._size = sizeof(BNM::Coroutine::IEnumerator);
-    coroutineIEClass._targetType = BNM::CompileTimeClassBuilder("BNM.Coroutine", "IEnumerator").Build();
+    coroutineIEClass._targetType =
+        BNM::CompileTimeClassBuilder("BNM.Coroutine", "IEnumerator").Build();
     coroutineIEClass._baseType = {};
     coroutineIEClass._owner = {};
-    coroutineIEClass._interfaces = {BNM::CompileTimeClassBuilder("System.Collections", "IEnumerator", "mscorlib.dll").Build()};
+    coroutineIEClass._interfaces = {
+        BNM::CompileTimeClassBuilder("System.Collections", "IEnumerator", "mscorlib.dll").Build()};
     AddClass(&coroutineIEClass);
 
     {
         constexpr auto p = &BNM::Coroutine::IEnumerator::MoveNext;
         ieMoveNext._address = *(void **) &p;
-        ieMoveNext._invoker = (void *) &GetMethodInvoker<false, decltype(&BNM::Coroutine::IEnumerator::MoveNext)>::Invoke;
+        ieMoveNext._invoker =
+            (void *) &GetMethodInvoker<false,
+                                       decltype(&BNM::Coroutine::IEnumerator::MoveNext)>::Invoke;
         ieMoveNext._name = "MoveNext";
         ieMoveNext._returnType = BNM::Defaults::Get<bool>();
         ieMoveNext._isStatic = false;
@@ -32,7 +37,9 @@ void BNM::Internal::SetupCoroutine() {
     {
         constexpr auto p = &BNM::Coroutine::IEnumerator::Reset;
         ieReset._address = *(void **) &p;
-        ieReset._invoker = (void *) &GetMethodInvoker<false, decltype(&BNM::Coroutine::IEnumerator::Reset)>::Invoke;
+        ieReset._invoker =
+            (void
+                 *) &GetMethodInvoker<false, decltype(&BNM::Coroutine::IEnumerator::Reset)>::Invoke;
         ieReset._name = "Reset";
         ieReset._returnType = BNM::Defaults::Get<void>();
         ieReset._isStatic = false;
@@ -41,7 +48,9 @@ void BNM::Internal::SetupCoroutine() {
     {
         constexpr auto p = &BNM::Coroutine::IEnumerator::Current;
         ieCurrent._address = *(void **) &p;
-        ieCurrent._invoker = (void *) &GetMethodInvoker<false, decltype(&BNM::Coroutine::IEnumerator::Current)>::Invoke;
+        ieCurrent._invoker =
+            (void *) &GetMethodInvoker<false,
+                                       decltype(&BNM::Coroutine::IEnumerator::Current)>::Invoke;
         ieCurrent._name = "get_Current";
         ieCurrent._returnType = BNM::Defaults::Get<BNM::IL2CPP::Il2CppObject *>();
         ieCurrent._isStatic = false;
@@ -50,16 +59,19 @@ void BNM::Internal::SetupCoroutine() {
 
     static CustomMethod cwMoveNext{}, cwReset{}, cwCurrent{};
     coroutineWaitClass._size = sizeof(CustomWait);
-    coroutineWaitClass._targetType = BNM::CompileTimeClassBuilder("BNM.Coroutine", "CustomWait").Build();
+    coroutineWaitClass._targetType =
+        BNM::CompileTimeClassBuilder("BNM.Coroutine", "CustomWait").Build();
     coroutineWaitClass._baseType = {};
     coroutineWaitClass._owner = {};
-    coroutineWaitClass._interfaces = {BNM::CompileTimeClassBuilder("System.Collections", "IEnumerator", "mscorlib.dll").Build()};
+    coroutineWaitClass._interfaces = {
+        BNM::CompileTimeClassBuilder("System.Collections", "IEnumerator", "mscorlib.dll").Build()};
     AddClass(&coroutineWaitClass);
 
     {
         constexpr auto p = &CustomWait::MoveNext;
         cwMoveNext._address = *(void **) &p;
-        cwMoveNext._invoker = (void *) &GetMethodInvoker<false, decltype(&CustomWait::MoveNext)>::Invoke;
+        cwMoveNext._invoker =
+            (void *) &GetMethodInvoker<false, decltype(&CustomWait::MoveNext)>::Invoke;
         cwMoveNext._name = "MoveNext";
         cwMoveNext._returnType = BNM::Defaults::Get<bool>();
         cwMoveNext._isStatic = false;
@@ -77,7 +89,8 @@ void BNM::Internal::SetupCoroutine() {
     {
         constexpr auto p = &CustomWait::Current;
         cwCurrent._address = *(void **) &p;
-        cwCurrent._invoker = (void *) &GetMethodInvoker<true, decltype(&CustomWait::Current)>::Invoke;
+        cwCurrent._invoker =
+            (void *) &GetMethodInvoker<true, decltype(&CustomWait::Current)>::Invoke;
         cwCurrent._name = "get_Current";
         cwCurrent._returnType = BNM::Defaults::Get<BNM::IL2CPP::Il2CppObject *>();
         cwCurrent._isStatic = false;
@@ -110,7 +123,8 @@ void BNM::Coroutine::IEnumerator::Finalize() {
 
 bool BNM::Coroutine::IEnumerator::MoveNext() {
     try {
-        if (!_coroutine) return false;
+        if (!_coroutine)
+            return false;
         _coroutine.resume();
         if (_coroutine.done()) {
             _coroutine.destroy();
@@ -131,8 +145,10 @@ bool BNM::Coroutine::IEnumerator::MoveNext() {
 
 BNM::Coroutine::IEnumerator *BNM::Coroutine::IEnumerator::Get() {
     try {
-        auto inst = (BNM::Coroutine::IEnumerator *) BNM::Class(Internal::coroutineIEClass.myClass).CreateNewInstance();
-        if (!inst) return nullptr;
+        auto inst = (BNM::Coroutine::IEnumerator *) BNM::Class(Internal::coroutineIEClass.myClass)
+                        .CreateNewInstance();
+        if (!inst)
+            return nullptr;
         inst->_current = nullptr;
         inst->_coroutine = nullptr;
         std::swap(this->_coroutine, inst->_coroutine);
@@ -145,9 +161,7 @@ BNM::Coroutine::IEnumerator *BNM::Coroutine::IEnumerator::Get() {
 
 void BNM::Coroutine::IEnumerator::Reset() {}
 
-BNM::IL2CPP::Il2CppObject *BNM::Coroutine::IEnumerator::Current() {
-    return _current;
-}
+BNM::IL2CPP::Il2CppObject *BNM::Coroutine::IEnumerator::Current() { return _current; }
 
 BNM::Coroutine::AsyncOperation::AsyncOperation(intptr_t operation) {
     _object = Internal::coroutineAsyncOperation.CreateNewObjectParameters(operation);
@@ -189,7 +203,8 @@ BNM::Coroutine::WaitWhile::WaitWhile(const std::function<bool()> &function) {
 
 void Utils::LogCompileTimeClass(const CompileTimeClass &compileTimeClass) {
     for (auto &info : compileTimeClass._stack) {
-        if (!info) continue;
+        if (!info)
+            continue;
         switch (info->_baseType) {
             case CompileTimeClass::_BaseType::Class: {
                 auto classInfo = (CompileTimeClass::_ClassInfo *) info.get();
@@ -201,22 +216,21 @@ void Utils::LogCompileTimeClass(const CompileTimeClass &compileTimeClass) {
             } break;
             case CompileTimeClass::_BaseType::Inner: {
                 auto innerInfo = (CompileTimeClass::_InnerInfo *) info.get();
-                BNM_LOG_ERR("\tInner( name: \"%s\") - %s",
-                            innerInfo->_name ? innerInfo->_name : "",
+                BNM_LOG_ERR("\tInner( name: \"%s\") - %s", innerInfo->_name ? innerInfo->_name : "",
                             compileTimeClass._loadedClass.str().c_str());
             } break;
             case CompileTimeClass::_BaseType::Modifier:
             case CompileTimeClass::_BaseType::Generic:
             case CompileTimeClass::_BaseType::None:
-            case CompileTimeClass::_BaseType::MaxCount: break;
+            case CompileTimeClass::_BaseType::MaxCount:
+                break;
         }
     }
 }
 
 void Loading::AddOnLoadedEvent(void (*event)()) {
-    if (event) Internal::onLoadedEvents.push_back(event);
+    if (event)
+        Internal::onLoadedEvents.push_back(event);
 }
 
-void Loading::ClearOnLoadedEvents() {
-    Internal::onLoadedEvents.clear();
-}
+void Loading::ClearOnLoadedEvents() { Internal::onLoadedEvents.clear(); }

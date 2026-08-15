@@ -4,153 +4,175 @@ using namespace BNM;
 
 namespace BNM::Internal::AssemblerUtils {
 
-static std::string ReverseHexString(const std::string &hex) {
-    std::string out{};
-    for (size_t i = 0; i < hex.length(); i += 2) out.insert(0, hex.substr(i, 2));
-    return out;
-}
+    static std::string ReverseHexString(const std::string &hex) {
+        std::string out{};
+        for (size_t i = 0; i < hex.length(); i += 2) out.insert(0, hex.substr(i, 2));
+        return out;
+    }
 
-static BNM_PTR HexStr2Value(const std::string &hex) {
-    return strtoull(hex.c_str(), nullptr, 16);
-}
+    static BNM_PTR HexStr2Value(const std::string &hex) {
+        return strtoull(hex.c_str(), nullptr, 16);
+    }
 
 #if defined(__ARM_ARCH_7A__)
 
-static bool IsBranchHex(const std::string &hex) {
-    BNM_PTR hexW = HexStr2Value(ReverseHexString(hex));
-    return (hexW & 0x0A000000) == 0x0A000000;
-}
+    static bool IsBranchHex(const std::string &hex) {
+        BNM_PTR hexW = HexStr2Value(ReverseHexString(hex));
+        return (hexW & 0x0A000000) == 0x0A000000;
+    }
 
 #elif defined(__aarch64__)
 
-static bool IsBranchHex(const std::string &hex) {
-    BNM_PTR hexW = HexStr2Value(ReverseHexString(hex));
-    return (hexW & 0xFC000000) == 0x14000000 || (hexW & 0xFC000000) == 0x94000000;
-}
+    static bool IsBranchHex(const std::string &hex) {
+        BNM_PTR hexW = HexStr2Value(ReverseHexString(hex));
+        return (hexW & 0xFC000000) == 0x14000000 || (hexW & 0xFC000000) == 0x94000000;
+    }
 
 #elif defined(__i386__) || defined(__x86_64__)
 
-static bool IsBranchHex(const std::string &hex) {
-    return hex.size() >= 2 && hex[0] == 'E' && hex[1] == '8';
-}
+    static bool IsBranchHex(const std::string &hex) {
+        return hex.size() >= 2 && hex[0] == 'E' && hex[1] == '8';
+    }
 
 #else
 #error "BNM-Free only supports arm64, arm, x86 and x86_64"
 #endif
 
-static const char *hexChars = "0123456789ABCDEF";
+    static const char *hexChars = "0123456789ABCDEF";
 
-static constexpr BNM_PTR kMaxJumpScanBytes = 0x2000;
+    static constexpr BNM_PTR kMaxJumpScanBytes = 0x2000;
 
-template<size_t len>
-static std::string ReadMemory(BNM_PTR address) {
-    char temp[len];
-    memset(temp, 0, len);
-    std::string ret{};
-    if (!address) return ret;
-    memcpy(temp, (void *) address, len);
-    ret.resize(len * 2, 0);
-    auto buf = (char *) ret.data();
-    for (size_t i = 0; i < len; ++i) {
-        *buf++ = hexChars[((uint8_t) temp[i]) >> 4];
-        *buf++ = hexChars[((uint8_t) temp[i]) & 0x0F];
+    template <size_t len>
+    static std::string ReadMemory(BNM_PTR address) {
+        char temp[len];
+        memset(temp, 0, len);
+        std::string ret{};
+        if (!address)
+            return ret;
+        memcpy(temp, (void *) address, len);
+        ret.resize(len * 2, 0);
+        auto buf = (char *) ret.data();
+        for (size_t i = 0; i < len; ++i) {
+            *buf++ = hexChars[((uint8_t) temp[i]) >> 4];
+            *buf++ = hexChars[((uint8_t) temp[i]) & 0x0F];
+        }
+        return ret;
     }
-    return ret;
-}
 
-static bool DecodeBranchOrCall(const std::string &hex, BNM_PTR offset, BNM_PTR &outOffset) {
+    static bool DecodeBranchOrCall(const std::string &hex, BNM_PTR offset, BNM_PTR &outOffset) {
 #if defined(__ARM_ARCH_7A__) || defined(__aarch64__)
-    if (!IsBranchHex(hex)) return false;
+        if (!IsBranchHex(hex))
+            return false;
 #if defined(__aarch64__)
-    uint8_t add = 0;
+        uint8_t add = 0;
 #else
-    uint8_t add = 8;
+        uint8_t add = 8;
 #endif
-    outOffset = ((int32_t) (((((HexStr2Value(ReverseHexString(hex))) & (((uint32_t) 1 << 24) - 1) << 0) >> 0) << 2) << (32 - 26)) >> (32 - 26)) + offset + add;
+        outOffset = ((int32_t) (((((HexStr2Value(ReverseHexString(hex))) &
+                                   (((uint32_t) 1 << 24) - 1) << 0) >>
+                                  0)
+                                 << 2)
+                                << (32 - 26)) >>
+                     (32 - 26)) +
+                    offset + add;
 #elif defined(__i386__) || defined(__x86_64__)
-    if (!IsBranchHex(hex)) return false;
-    outOffset = offset + HexStr2Value(ReverseHexString(hex).substr(0, 8)) + 5;
+        if (!IsBranchHex(hex))
+            return false;
+        outOffset = offset + HexStr2Value(ReverseHexString(hex).substr(0, 8)) + 5;
 #else
 #error "BNM-Free only supports arm64, arm, x86 and x86_64"
-    return false;
+        return false;
 #endif
-    return true;
-}
+        return true;
+    }
 
-BNM_PTR FindNextJump(BNM_PTR start, uint8_t index) {
-    if (!start || index == 0) return 0;
+    BNM_PTR FindNextJump(BNM_PTR start, uint8_t index) {
+        if (!start || index == 0)
+            return 0;
 #if defined(__ARM_ARCH_7A__) || defined(__aarch64__)
-    BNM_PTR offset = 0;
-    std::string curHex = ReadMemory<4>(start);
-    BNM_PTR outOffset = 0;
-    bool out = false;
-    while (!(out = DecodeBranchOrCall(curHex, start + offset, outOffset)) || index != 1) {
-        if (out) index--;
-        offset += 4;
-        if (offset >= kMaxJumpScanBytes) {
-            BNM_LOG_WARN("FindNextJump: no branch found within %u bytes from %p", (unsigned) kMaxJumpScanBytes, (void *) start);
-            return 0;
+        BNM_PTR offset = 0;
+        std::string curHex = ReadMemory<4>(start);
+        BNM_PTR outOffset = 0;
+        bool out = false;
+        while (!(out = DecodeBranchOrCall(curHex, start + offset, outOffset)) || index != 1) {
+            if (out)
+                index--;
+            offset += 4;
+            if (offset >= kMaxJumpScanBytes) {
+                BNM_LOG_WARN("FindNextJump: no branch found within %u bytes from %p",
+                             (unsigned) kMaxJumpScanBytes, (void *) start);
+                return 0;
+            }
+            curHex = ReadMemory<4>(start + offset);
+            if (curHex.empty())
+                return 0;
         }
-        curHex = ReadMemory<4>(start + offset);
-        if (curHex.empty()) return 0;
-    }
-    return outOffset;
+        return outOffset;
 #elif defined(__i386__) || defined(__x86_64__)
-    BNM_PTR offset = 0;
-    std::string curHex = ReadMemory<1>(start);
-    BNM_PTR outOffset = 0;
-    bool out = false;
-    while (!(out = IsBranchHex(curHex)) || index != 1) {
-        if (out) index--;
-        offset += 1;
-        if (offset >= kMaxJumpScanBytes) {
-            BNM_LOG_WARN("FindNextJump: no branch found within %u bytes from %p", (unsigned) kMaxJumpScanBytes, (void *) start);
-            return 0;
+        BNM_PTR offset = 0;
+        std::string curHex = ReadMemory<1>(start);
+        BNM_PTR outOffset = 0;
+        bool out = false;
+        while (!(out = IsBranchHex(curHex)) || index != 1) {
+            if (out)
+                index--;
+            offset += 1;
+            if (offset >= kMaxJumpScanBytes) {
+                BNM_LOG_WARN("FindNextJump: no branch found within %u bytes from %p",
+                             (unsigned) kMaxJumpScanBytes, (void *) start);
+                return 0;
+            }
+            curHex = ReadMemory<1>(start + offset);
+            if (curHex.empty())
+                return 0;
         }
-        curHex = ReadMemory<1>(start + offset);
-        if (curHex.empty()) return 0;
-    }
-    DecodeBranchOrCall(ReadMemory<5>(start + offset), start + offset, outOffset);
-    return outOffset;
+        DecodeBranchOrCall(ReadMemory<5>(start + offset), start + offset, outOffset);
+        return outOffset;
 #else
 #error "BNM-Free only supports arm64, arm, x86 and x86_64"
-    return 0;
+        return 0;
 #endif
-}
+    }
 
-}
+}  // namespace BNM::Internal::AssemblerUtils
 
 using namespace BNM::Internal::AssemblerUtils;
 
 void *BNM::Internal::AssemblerUtils::FindJump(void *start, uint8_t count) {
-    if (!start) return nullptr;
+    if (!start)
+        return nullptr;
     return (void *) FindNextJump((BNM_PTR) start, count);
 }
 
 void BNM::EmptyMethod() {}
 
 void *BNM::OffsetInLib(void *offsetInMemory) {
-    if (offsetInMemory == nullptr) return nullptr;
+    if (offsetInMemory == nullptr)
+        return nullptr;
     Dl_info info{};
-    if (!BNM_dladdr(offsetInMemory, &info) || !info.dli_fbase) return offsetInMemory;
+    if (!BNM_dladdr(offsetInMemory, &info) || !info.dli_fbase)
+        return offsetInMemory;
     return (void *) ((BNM_PTR) offsetInMemory - (BNM_PTR) info.dli_fbase);
 }
 
-void *Utils::OffsetInLib(void *offsetInMemory) {
-    return ::OffsetInLib(offsetInMemory);
-}
+void *Utils::OffsetInLib(void *offsetInMemory) { return ::OffsetInLib(offsetInMemory); }
 
 bool BNM::CheckHandle(void *handle) {
-    if (!handle) return false;
-    
-    if (Internal::il2cppLibraryHandle || Internal::states.state) return false;
+    if (!handle)
+        return false;
+
+    if (Internal::il2cppLibraryHandle || Internal::states.state)
+        return false;
 
     void *init = BNM_dlsym(handle, BNM_OBFUSCATE_TMP("il2cpp_init"));
-    if (!init) return false;
+    if (!init)
+        return false;
 
-    Internal::BNM_il2cpp_init_origin = ::BasicHook(init, (void *) Internal::BNM_il2cpp_init, Internal::old_BNM_il2cpp_init);
+    Internal::BNM_il2cpp_init_origin =
+        ::BasicHook(init, (void *) Internal::BNM_il2cpp_init, Internal::old_BNM_il2cpp_init);
 
-    if (Internal::states.lateInitAllowed) Internal::LateInit(BNM_dlsym(handle, BNM_OBFUSCATE_TMP("il2cpp_class_from_il2cpp_type")));
+    if (Internal::states.lateInitAllowed)
+        Internal::LateInit(BNM_dlsym(handle, BNM_OBFUSCATE_TMP("il2cpp_class_from_il2cpp_type")));
 
     Internal::il2cppLibraryHandle = handle;
     return true;

@@ -18,31 +18,37 @@ void *MainThread(void *) {
         if (jvm && jvm->AttachCurrentThread(&env, nullptr) == JNI_OK && env) {
             load = BNM::Loading::TryLoadByJNI(env, nullptr);
             jvm->DetachCurrentThread();
-            if (load) break;
+            if (load)
+                break;
         }
         sleep(1);
     }
     for (int i = 0; i < 20 && !BNM::IsLoaded(); i++) sleep(1);
     LOGI("load=%s loaded=%s", load ? "true" : "false", BNM::IsLoaded() ? "true" : "false");
-    if (!BNM::IsLoaded()) return nullptr;
-    
+    if (!BNM::IsLoaded())
+        return nullptr;
+
     bool attached = BNM::AttachIl2Cpp();
 
-    auto appClass = BNM::Class(BNM_OBFUSCATE("UnityEngine"), BNM_OBFUSCATE("Application"), BNM::Image(BNM_OBFUSCATE("UnityEngine.CoreModule.dll")));
+    auto appClass = BNM::Class(BNM_OBFUSCATE("UnityEngine"), BNM_OBFUSCATE("Application"),
+                               BNM::Image(BNM_OBFUSCATE("UnityEngine.CoreModule.dll")));
     LOGI("Application class: %s", appClass ? appClass.str().c_str() : "(null)");
 
-    auto getVer = appClass.GetMethod(BNM_OBFUSCATE("get_unityVersion"), 0).cast<BNM::Method<BNM::Structures::Mono::String *>>();
+    auto getVer = appClass.GetMethod(BNM_OBFUSCATE("get_unityVersion"), 0)
+                      .cast<BNM::Method<BNM::Structures::Mono::String *>>();
     LOGI("get_unityVersion resolved: %s", getVer.IsValid() ? "true" : "false");
     auto ver = getVer();
     LOGI("Unity version: %s", ver ? ver->str().c_str() : "(null)");
 
-    auto getVer2 = appClass.GetMethod(BNM_OBFUSCATE("get_version"), 0).cast<BNM::Method<BNM::Structures::Mono::String *>>();
+    auto getVer2 = appClass.GetMethod(BNM_OBFUSCATE("get_version"), 0)
+                       .cast<BNM::Method<BNM::Structures::Mono::String *>>();
     auto ver2 = getVer2();
     LOGI("Application version: %s", ver2 ? ver2->str().c_str() : "(null)");
 
     LOGI("TEST DONE");
 
-    if (attached) BNM::DetachIl2Cpp();
+    if (attached)
+        BNM::DetachIl2Cpp();
     return nullptr;
 }
 

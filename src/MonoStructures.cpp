@@ -4,11 +4,13 @@ using namespace BNM;
 
 Structures::Mono::String *BNM::CreateMonoString(const std::string_view &str) {
     if (!Internal::api.il2cpp_string_new_len) {
-        if (!Internal::api.il2cpp_string_new) return nullptr;
+        if (!Internal::api.il2cpp_string_new)
+            return nullptr;
         std::string copy(str);
         return (Structures::Mono::String *) Internal::api.il2cpp_string_new(copy.c_str());
     }
-    return (Structures::Mono::String *) Internal::api.il2cpp_string_new_len(str.data(), (uint32_t) str.size());
+    return (Structures::Mono::String *) Internal::api.il2cpp_string_new_len(str.data(),
+                                                                            (uint32_t) str.size());
 }
 
 namespace BNM::Structures::Mono::PRIVATE_MonoListData {
@@ -17,33 +19,42 @@ namespace BNM::Structures::Mono::PRIVATE_MonoListData {
     void *CompareExchange4List(void *syncRoot) {
         if (Internal::vmData.Interlocked$$CompareExchange.IsValid()) {
             auto m = Internal::vmData.Interlocked$$CompareExchange.cast<Method<void *>>();
-            m((void **) &syncRoot, (void *) Internal::vmData.Object.CreateNewInstance(), (void *) nullptr);
+            m((void **) &syncRoot, (void *) Internal::vmData.Object.CreateNewInstance(),
+              (void *) nullptr);
         }
         return syncRoot;
     }
 
     IL2CPP::Il2CppClass *TryGetMonoListClass(uint32_t typeHash, MethodData *data, size_t count) {
         auto &klass = customListsMap[typeHash];
-        if (klass) return klass;
+        if (klass)
+            return klass;
 
         auto templateClass = Internal::customListTemplateClass;
-        if (!templateClass) return nullptr;
-        auto size = sizeof(IL2CPP::Il2CppClass) + templateClass->vtable_count * sizeof(IL2CPP::VirtualInvokeData);
+        if (!templateClass)
+            return nullptr;
+        auto size = sizeof(IL2CPP::Il2CppClass) +
+                    templateClass->vtable_count * sizeof(IL2CPP::VirtualInvokeData);
         auto typedClass = (IL2CPP::Il2CppClass *) BNM_malloc(size);
         memcpy(typedClass, templateClass, size);
 
         std::map<uint32_t, IL2CPP::MethodInfo *> createdMethods{};
         for (uint16_t i = 4; i < typedClass->vtable_count; ++i) {
             auto &cur = typedClass->vtable[i];
-            if (!cur.method || !cur.method->name) continue;
+            if (!cur.method || !cur.method->name)
+                continue;
             auto name = std::string_view(cur.method->name);
             auto dot = name.rfind('.');
-            if (dot != std::string_view::npos) name = name.substr(dot + 1);
+            if (dot != std::string_view::npos)
+                name = name.substr(dot + 1);
 
             auto iterator = data;
             size_t c = 0;
-            for (; c < count; ++c, ++iterator) if (iterator->name && name == iterator->name) break;
-            if (c == count) continue;
+            for (; c < count; ++c, ++iterator)
+                if (iterator->name && name == iterator->name)
+                    break;
+            if (c == count)
+                continue;
 
             auto &methodInfo = createdMethods[FNV1a(name)];
             if (!methodInfo) {
@@ -58,12 +69,13 @@ namespace BNM::Structures::Mono::PRIVATE_MonoListData {
         klass = typedClass;
         return klass;
     }
-}
+}  // namespace BNM::Structures::Mono::PRIVATE_MonoListData
 
 namespace BNM::Exceptions {
     Exception TryInvoke(const std::function<void()> &func) {
         auto &api = BNM::Internal::api;
-        if (!api.il2cpp_runtime_invoke) return {};
+        if (!api.il2cpp_runtime_invoke)
+            return {};
         IL2CPP::Il2CppType type;
         memset(&type, 0, sizeof(type));
         type.type = IL2CPP::IL2CPP_TYPE_VOID;
@@ -76,14 +88,17 @@ namespace BNM::Exceptions {
         info.methodPointer = (decltype(info.methodPointer)) &func;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wcast-function-type"
-        info.invoker_method = (IL2CPP::InvokerMethod) +[](std::function<void()> *f) -> void { (*f)(); };
+        info.invoker_method =
+            (IL2CPP::InvokerMethod) + [](std::function<void()> *f) -> void { (*f)(); };
 #pragma GCC diagnostic pop
         IL2CPP::Il2CppException *exception = nullptr;
         api.il2cpp_runtime_invoke(&info, nullptr, nullptr, &exception);
         return {exception};
     }
-}
+}  // namespace BNM::Exceptions
 
 Structures::Mono::String *Structures::Mono::String::Empty() {
-    return (Structures::Mono::String *) (Internal::vmData.String$$Empty ? *Internal::vmData.String$$Empty : nullptr);
+    return (Structures::Mono::String *) (Internal::vmData.String$$Empty
+                                             ? *Internal::vmData.String$$Empty
+                                             : nullptr);
 }
